@@ -1,0 +1,51 @@
+{
+  "schema_version": "0.1.0",
+  "operations": [
+    {
+      "id": "FILTER",
+      "name_de": "Filtration",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "input_requirements": {"heterogeneous": true},
+      "output_roles": ["filtrate", "filter_residue"]
+    },
+    {
+      "id": "CENTRIFUGE",
+      "name_de": "Zentrifugieren",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "input_requirements": {"heterogeneous": true},
+      "output_roles": ["supernatant", "sediment"]
+    },
+    {
+      "id": "DISSOLVE_WATER",
+      "name_de": "In Wasser lösen",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "output_roles": ["aqueous_solution"]
+    },
+    {
+      "id": "DILUTE",
+      "name_de": "Verdünnen",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "output_roles": ["diluted_sample"]
+    },
+    {
+      "id": "DISTILL",
+      "name_de": "Destillieren",
+      "category": "separation",
+      "creates_samples": true,
+      "external_app": "DESTILLATION",
+      "output_roles": ["fraction_1", "fraction_2", "fraction_3", "residue"]
+    },
+    {
+      "id": "EXTRACT_LLE",
+      "name_de": "Flüssig-Flüssig-Extraktion",
+      "category": "separation",
+      "creates_samples": true,
+      "status": "reserved",
+      "output_roles": ["aqueous_phase", "organic_phase"]
+    }
+  ]
+}

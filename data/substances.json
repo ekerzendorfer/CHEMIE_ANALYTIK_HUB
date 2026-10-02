@@ -1,0 +1,121 @@
+{
+  "schema_version": "0.1.0",
+  "substances": [
+    {
+      "id": "ETHYL_ACETATE",
+      "name_de": "Ethylacetat",
+      "formula": "C4H8O2",
+      "molar_mass_g_mol": 88.11,
+      "type": "molecular",
+      "priority": "A",
+      "app_refs": {
+        "distillation": "ethyl_acetate",
+        "gc": "ethyl_acetate",
+        "structure_lab": "ethyl_acetate",
+        "mol_lab": "ethyl_acetate"
+      }
+    },
+    {
+      "id": "BUTAN_1_OL",
+      "name_de": "1-Butanol",
+      "formula": "C4H10O",
+      "molar_mass_g_mol": 74.12,
+      "type": "molecular",
+      "priority": "A",
+      "app_refs": {
+        "distillation": "butan_1_ol",
+        "gc": "butan_1_ol",
+        "structure_lab": "butan_1_ol"
+      }
+    },
+    {
+      "id": "SALICYLIC_ACID",
+      "name_de": "Salicylsäure",
+      "formula": "C7H6O3",
+      "molar_mass_g_mol": 138.12,
+      "type": "molecular",
+      "priority": "A",
+      "app_refs": {
+        "titration": "salicylic_acid",
+        "structure_lab": "salicylic_acid",
+        "mol_lab": "salicylic_acid"
+      }
+    },
+    {
+      "id": "COPPER_SULFATE_PENTAHYDRATE",
+      "name_de": "Kupfer(II)-sulfat-Pentahydrat",
+      "formula": "CuSO4·5H2O",
+      "molar_mass_g_mol": 249.68,
+      "type": "ionic_solid",
+      "priority": "A",
+      "app_refs": {}
+    },
+    {
+      "id": "COPPER_II_AQ",
+      "name_de": "Kupfer(II)-Ion (aq)",
+      "formula": "Cu2+",
+      "type": "ion",
+      "priority": "A",
+      "app_refs": {
+        "ion_fishing": "cu2plus",
+        "spectral_lab": "cu_aquo"
+      }
+    },
+    {
+      "id": "SULFATE_AQ",
+      "name_de": "Sulfat-Ion (aq)",
+      "formula": "SO4^2-",
+      "type": "ion",
+      "priority": "A",
+      "app_refs": {
+        "ion_fishing": "sulfate"
+      }
+    },
+    {
+      "id": "TETRAAMMINE_COPPER_II",
+      "name_de": "Tetraamminkupfer(II)-Komplex",
+      "formula": "[Cu(NH3)4]2+",
+      "type": "complex_ion",
+      "priority": "A",
+      "app_refs": {
+        "spectral_lab": "cu_tetraammine"
+      }
+    },
+    {
+      "id": "WATER",
+      "name_de": "Wasser",
+      "formula": "H2O",
+      "molar_mass_g_mol": 18.015,
+      "type": "molecular",
+      "priority": "A",
+      "app_refs": {}
+    },
+    {
+      "id": "AMMONIA_AQ",
+      "name_de": "Ammoniaklösung",
+      "formula": "NH3(aq)",
+      "type": "reagent",
+      "priority": "A",
+      "app_refs": {}
+    },
+    {
+      "id": "SODIUM_HYDROXIDE",
+      "name_de": "Natriumhydroxid",
+      "formula": "NaOH",
+      "molar_mass_g_mol": 40.00,
+      "type": "reagent",
+      "priority": "A",
+      "app_refs": {
+        "titration": "naoh"
+      }
+    },
+    {"id":"ACETONE","name_de":"Aceton","formula":"C3H6O","molar_mass_g_mol":58.08,"type":"molecular","priority":"B","app_refs":{"distillation":"acetone","gc":"acetone","structure_lab":"acetone"}},
+    {"id":"TOLUENE","name_de":"Toluol","formula":"C7H8","molar_mass_g_mol":92.14,"type":"molecular","priority":"B","app_refs":{"distillation":"toluene","gc":"toluene","structure_lab":"toluene"}},
+    {"id":"METHANOL","name_de":"Methanol","formula":"CH4O","molar_mass_g_mol":32.04,"type":"molecular","priority":"B","app_refs":{"distillation":"methanol","gc":"methanol","structure_lab":"methanol"}},
+    {"id":"ETHANOL","name_de":"Ethanol","formula":"C2H6O","molar_mass_g_mol":46.07,"type":"molecular","priority":"B","app_refs":{"distillation":"ethanol","gc":"ethanol","structure_lab":"ethanol"}},
+    {"id":"CYCLOHEXANE","name_de":"Cyclohexan","formula":"C6H12","molar_mass_g_mol":84.16,"type":"molecular","priority":"B","app_refs":{"distillation":"cyclohexane","gc":"cyclohexane"}},
+    {"id":"ACETIC_ACID","name_de":"Essigsäure","formula":"C2H4O2","molar_mass_g_mol":60.05,"type":"molecular","priority":"B","app_refs":{"titration":"acetic_acid","structure_lab":"acetic_acid"}},
+    {"id":"BENZOIC_ACID","name_de":"Benzoesäure","formula":"C7H6O2","molar_mass_g_mol":122.12,"type":"molecular","priority":"B","app_refs":{"titration":"benzoic_acid","structure_lab":"benzoic_acid"}},
+    {"id":"ASCORBIC_ACID","name_de":"Ascorbinsäure","formula":"C6H8O6","molar_mass_g_mol":176.12,"type":"molecular","priority":"C","app_refs":{"spectral_lab":"ascorbic_acid","structure_lab":"ascorbic_acid"}}
+  ]
+}

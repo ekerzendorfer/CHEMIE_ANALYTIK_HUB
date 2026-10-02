@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1.0",
+  "object_type": "RESULT",
+  "required_fields": [
+    "result_id",
+    "run_id",
+    "app_id",
+    "analysis_type",
+    "sample_id",
+    "status",
+    "measurement"
+  ],
+  "identity_status_values": [
+    "unknown",
+    "candidate",
+    "supported",
+    "confirmed"
+  ],
+  "example": {
+    "result_id": "RES_000017",
+    "run_id": "RUN_000017",
+    "case_id": "VCOE01",
+    "sample_id": "VCOE01_F1",
+    "app_id": "GC_LAB",
+    "analysis_type": "GC",
+    "status": "completed",
+    "measurement": {
+      "peak_count": 2,
+      "peaks": [
+        {"peak_id": "P1", "retention_time_min": 2.41, "area": 1834},
+        {"peak_id": "P2", "retention_time_min": 4.83, "area": 492}
+      ]
+    },
+    "evaluation": {
+      "minimum_resolution": 1.72
+    },
+    "student_interpretation": {
+      "P1": {"identity_status": "unknown"},
+      "P2": {"identity_status": "unknown"}
+    }
+  }
+}

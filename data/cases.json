@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "cases": [
+    {
+      "id": "VCOE01",
+      "name_de": "Unbekannte heterogene Probe 01",
+      "status": "development",
+      "difficulty": "advanced_secondary",
+      "start_sample_id": "VCOE01_RAW",
+      "mode_support": ["guided", "semi_open", "open"],
+      "learning_goals": [
+        "geeignete Probenvorbereitung auswählen",
+        "Trenn- und Analyseverfahren begründet kombinieren",
+        "organische und anorganische Teilproben unterscheiden",
+        "GC zur Trennung und nicht als alleinigen Identitätsnachweis verwenden",
+        "mehrere analytische Befunde zu einer Stoffhypothese verknüpfen",
+        "qualitative und quantitative Analytik unterscheiden"
+      ],
+      "notes_internal": "Flagship-Fall für die Entwicklung des Digitalen Analytiklabors. Zusammensetzungen und Fraktionsverteilungen sind in v0.1 noch Modellwerte."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CHEMIE mit KI – Digitales Analytiklabor: Test-Hub für vernetzte Proben- und Analysedaten.">
+  <title>CHEMIE mit KI – Digitales Analytiklabor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <p class="eyebrow">CHEMIE mit KI</p>
+        <h1>Digitales Analytiklabor</h1>
+        <p class="subtitle">Test-Hub v0.1 · Proben vorbereiten, Analysewege planen, Ergebnisse vernetzen</p>
+      </div>
+      <div class="version-badge" id="schemaBadge">CORE …</div>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <section class="card intro" aria-labelledby="caseTitle">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Aktiver Fall</p>
+          <h2 id="caseTitle">Lade Daten …</h2>
+        </div>
+        <button class="ghost" id="resetBtn" type="button">Fall zurücksetzen</button>
+      </div>
+      <p id="caseDescription" class="muted"></p>
+      <div class="mode-row">
+        <span class="label">Modus</span>
+        <span class="pill active">Geführt · Testbetrieb</span>
+        <span class="pill">VCÖ-01</span>
+      </div>
+    </section>
+
+    <section class="card tree-card" aria-labelledby="treeTitle">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Probenjournal</p>
+          <h2 id="treeTitle">Probenbaum</h2>
+        </div>
+        <span class="muted small">Klick auf eine freigeschaltete Probe</span>
+      </div>
+      <div id="sampleTree" class="sample-tree" aria-live="polite"></div>
+    </section>
+
+    <aside class="card detail-card" aria-labelledby="detailTitle">
+      <p class="kicker">Aktuelle Probe</p>
+      <h2 id="detailTitle">–</h2>
+      <div id="sampleMeta" class="meta-grid"></div>
+      <div class="divider"></div>
+      <h3>Mögliche nächste Schritte</h3>
+      <div id="actions" class="actions"></div>
+      <p id="actionHint" class="hint"></p>
+    </aside>
+
+    <section class="card journal-card" aria-labelledby="journalTitle">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Laborjournal</p>
+          <h2 id="journalTitle">Bisheriger Analyseweg</h2>
+        </div>
+      </div>
+      <div id="journal" class="journal"></div>
+    </section>
+
+    <section class="card validator-card" aria-labelledby="validatorTitle">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Entwicklungsdiagnose</p>
+          <h2 id="validatorTitle">CORE-Validator</h2>
+        </div>
+        <button class="ghost" id="toggleDiag" type="button">Details anzeigen</button>
+      </div>
+      <div id="validatorSummary" class="validator-summary"></div>
+      <pre id="validatorDetails" class="diag hidden"></pre>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <strong>CHEMIE_ANALYTIK_HUB v0.1</strong>
+      <span> · erster Test: Filtration erzeugt neue Samples; Stoffzusammensetzungen bleiben im Schülerbetrieb verborgen.</span>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

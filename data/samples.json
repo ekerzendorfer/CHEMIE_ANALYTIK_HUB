@@ -1,0 +1,146 @@
+{
+  "schema_version": "0.1.0",
+  "samples": [
+    {
+      "id": "VCOE01_RAW",
+      "case_id": "VCOE01",
+      "name_de": "Unbekannte Ausgangsprobe",
+      "sample_type": "unknown",
+      "physical_state": "liquid_with_suspended_solid",
+      "homogeneous": false,
+      "composition_internal": [
+        {"substance_id": "ETHYL_ACETATE", "fraction_model": 0.62},
+        {"substance_id": "BUTAN_1_OL", "fraction_model": 0.18},
+        {"substance_id": "SALICYLIC_ACID", "fraction_model": 0.08},
+        {"substance_id": "COPPER_SULFATE_PENTAHYDRATE", "fraction_model": 0.12}
+      ],
+      "allowed_operations": ["FILTER", "CENTRIFUGE"]
+    },
+    {
+      "id": "VCOE01_SOLID",
+      "case_id": "VCOE01",
+      "name_de": "Filterrückstand",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_RAW",
+      "created_by": "FILTER",
+      "physical_state": "solid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "COPPER_SULFATE_PENTAHYDRATE", "fraction_model": 1.0}
+      ],
+      "allowed_operations": ["DISSOLVE_WATER"]
+    },
+    {
+      "id": "VCOE01_SOLID_AQ",
+      "case_id": "VCOE01",
+      "name_de": "Wässrige Lösung des Filterrückstands",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_SOLID",
+      "created_by": "DISSOLVE_WATER",
+      "physical_state": "aqueous_solution",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "COPPER_II_AQ", "role": "analyte"},
+        {"substance_id": "SULFATE_AQ", "role": "analyte"},
+        {"substance_id": "WATER", "role": "solvent"}
+      ],
+      "compatible_analyses": ["ION_FISHING", "SPECTRAL_LAB"]
+    },
+    {
+      "id": "VCOE01_FILTRATE",
+      "case_id": "VCOE01",
+      "name_de": "Organisches Filtrat",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_RAW",
+      "created_by": "FILTER",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "ETHYL_ACETATE", "role": "major_component"},
+        {"substance_id": "BUTAN_1_OL", "role": "component"},
+        {"substance_id": "SALICYLIC_ACID", "role": "nonvolatile_solute"}
+      ],
+      "allowed_operations": ["DISTILL"]
+    },
+    {
+      "id": "VCOE01_F1",
+      "case_id": "VCOE01",
+      "name_de": "Destillationsfraktion 1",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_FILTRATE",
+      "created_by": "DISTILL",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "ETHYL_ACETATE", "role": "major_component"},
+        {"substance_id": "BUTAN_1_OL", "role": "minor_component"}
+      ],
+      "compatible_analyses": ["GC_LAB"]
+    },
+    {
+      "id": "VCOE01_F2",
+      "case_id": "VCOE01",
+      "name_de": "Destillationsfraktion 2",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_FILTRATE",
+      "created_by": "DISTILL",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "ETHYL_ACETATE", "role": "component"},
+        {"substance_id": "BUTAN_1_OL", "role": "component"}
+      ],
+      "compatible_analyses": ["GC_LAB"]
+    },
+    {
+      "id": "VCOE01_F3",
+      "case_id": "VCOE01",
+      "name_de": "Destillationsfraktion 3",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_FILTRATE",
+      "created_by": "DISTILL",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "BUTAN_1_OL", "role": "major_component"}
+      ],
+      "compatible_analyses": ["GC_LAB"]
+    },
+    {
+      "id": "VCOE01_RESIDUE",
+      "case_id": "VCOE01",
+      "name_de": "Destillationsrückstand",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_FILTRATE",
+      "created_by": "DISTILL",
+      "physical_state": "liquid_or_solution",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "SALICYLIC_ACID", "role": "analyte"}
+      ],
+      "compatible_analyses": ["TITRATION"]
+    },
+    {
+      "id": "STD_ETHYL_ACETATE",
+      "name_de": "Referenzstandard Ethylacetat",
+      "sample_type": "reference_standard",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "ETHYL_ACETATE", "fraction_model": 1.0}
+      ],
+      "compatible_analyses": ["GC_LAB"]
+    },
+    {
+      "id": "STD_BUTAN_1_OL",
+      "name_de": "Referenzstandard 1-Butanol",
+      "sample_type": "reference_standard",
+      "physical_state": "liquid",
+      "homogeneous": true,
+      "composition_internal": [
+        {"substance_id": "BUTAN_1_OL", "fraction_model": 1.0}
+      ],
+      "compatible_analyses": ["GC_LAB"]
+    }
+  ]
+}
