@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CHEMIE mit KI – Bridge-Teststation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <p class="eyebrow">CHEMIE mit KI</p>
+        <h1>Bridge-Teststation</h1>
+        <p class="subtitle">Technischer Rundlauf für Hub → Laborstation → RESULT → Hub</p>
+      </div>
+      <div class="version-badge">Dummy v0.2</div>
+    </div>
+  </header>
+  <main class="wrap" style="padding:24px 0 38px">
+    <section class="card">
+      <p class="kicker">Technischer Test</p>
+      <h2 id="title">Lade Run …</h2>
+      <p class="muted" id="meta"></p>
+      <div class="divider"></div>
+      <p><strong>Wichtig:</strong> Diese Station simuliert noch keine fachliche Photometriemessung. Sie prüft ausschließlich, ob Kontext und RESULT zwischen zwei GitHub-Pages-Seiten korrekt übertragen werden.</p>
+      <div class="actions" style="max-width:520px;margin-top:18px">
+        <button class="action-btn" id="completeBtn" type="button">Testmessung abschließen und RESULT zurückgeben</button>
+        <button class="ghost" id="cancelBtn" type="button">Ohne RESULT zurück zum Hub</button>
+      </div>
+      <pre id="details" class="diag" style="margin-top:18px"></pre>
+    </section>
+  </main>
+  <script src="bridge/chemie-analytik-bridge.js"></script>
+  <script src="dummy-lab.js"></script>
+</body>
+</html>
