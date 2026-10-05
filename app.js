@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.4.0";
+  const HUB_VERSION = "0.5.0";
 
   const els = {};
   let db = null;
@@ -105,6 +105,11 @@
       (sample.allowed_operations || []).forEach(function (op) {
         if (!operationIds.has(op)) issues.push(sample.id + ": allowed_operation " + op + " fehlt");
       });
+      Object.values(sample.operation_requirements || {}).forEach(function (req) {
+        if (req.result_sample_id && !sampleIds.has(req.result_sample_id)) {
+          issues.push(sample.id + ": operation requirement verweist auf unbekanntes Sample " + req.result_sample_id);
+        }
+      });
       (sample.composition_internal || []).forEach(function (comp) {
         if (!substanceIds.has(comp.substance_id)) issues.push(sample.id + ": Substance " + comp.substance_id + " fehlt");
       });
@@ -197,10 +202,13 @@
     if (run && run.status === "completed" && result && !state.importedResultIds.includes(result.result_id)) {
       state.results.push(result);
       state.importedResultIds.push(result.result_id);
+      const journalText = result.analysis_type === "QUALITATIVE_ION_ANALYSIS" && result.evaluation && result.evaluation.identified
+        ? "Qualitative Ionenanalyse: " + formatIon(result.evaluation.identified.cation) + " und " + formatIon(result.evaluation.identified.anion) + " bestätigt."
+        : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
       state.journal.push({
         ts: new Date().toISOString(),
         type: "result",
-        text: prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen."
+        text: journalText
       });
       selectedSampleId = result.sample_id || selectedSampleId;
       saveState();
@@ -305,9 +313,11 @@
       btn.className = "action-btn";
       const localExecutable = isLocalExecutableOperation(sample, op);
       const done = operationAlreadyDone(sample.id, opId);
-      btn.textContent = (op ? op.name_de : opId) + (localExecutable ? "" : " · vorbereitet");
-      btn.disabled = !localExecutable || done;
-      if (localExecutable && !done) {
+      const requirementOk = operationRequirementSatisfied(sample, opId);
+      btn.textContent = (op ? op.name_de : opId) +
+        (!localExecutable ? " · vorbereitet" : (!requirementOk ? " · nach Ionenanalyse" : ""));
+      btn.disabled = !localExecutable || done || !requirementOk;
+      if (localExecutable && !done && requirementOk) {
         btn.addEventListener("click", function () { executeLocalOperation(sample, op); });
       }
       els.actions.appendChild(btn);
@@ -316,18 +326,20 @@
     analyses.forEach(function (analysis) {
       const btn = document.createElement("button");
       btn.type = "button";
-      const spectralQualitative = sample.id === "VCOE01_SOLID_AQ" && analysis === "SPECTRAL_LAB";
       const spectralCalibration = sample.id === "VCOE01_PHOT_AMMINE" && analysis === "SPECTRAL_LAB";
-      const spectralEnabled = spectralQualitative || spectralCalibration;
-      btn.className = "action-btn " + (spectralEnabled ? "" : "secondary");
-      btn.disabled = !spectralEnabled;
+      const ionEnabled = sample.id === "VCOE01_ION_ALIQUOT" && analysis === "ION_FISHING";
+      const enabled = spectralCalibration || ionEnabled;
+      btn.className = "action-btn " + (enabled ? "" : "secondary");
+      btn.disabled = !enabled;
       btn.textContent = spectralCalibration
         ? "Quantitative Photometrie öffnen"
-        : spectralEnabled
-          ? prettyAnalysis(analysis) + " öffnen"
+        : ionEnabled
+          ? "Ionenfischen öffnen"
           : prettyAnalysis(analysis) + " · vorbereitet";
-      if (spectralEnabled) {
+      if (spectralCalibration) {
         btn.addEventListener("click", function () { startSpectralLab(sample); });
+      } else if (ionEnabled) {
+        btn.addEventListener("click", function () { startIonFishing(sample); });
       }
       els.actions.appendChild(btn);
     });
@@ -339,14 +351,38 @@
     } else if (sample.id === "VCOE01_SOLID_AQ") {
       els.actionHint.textContent = "Der Filterrückstand wurde quantitativ in Wasser gelöst und im Entwicklungsmodell auf 100,0 mL aufgefüllt. Die Stocklösung kann qualitativ untersucht oder in getrennte Teilproben für Ionenanalyse und quantitative Photometrie aufgeteilt werden.";
     } else if (sample.id === "VCOE01_ION_ALIQUOT") {
-      els.actionHint.textContent = "Diese Teilprobe ist für den qualitativen Ionennachweis reserviert. Die Ionenfischen-App wird in einem späteren Integrationsschritt angebunden.";
+      els.actionHint.textContent = "Diese Teilprobe dient zur qualitativen Identifikation der enthaltenen Ionen. Erst nach bestätigtem Cu²⁺-/SO₄²⁻-Nachweis wird die quantitative Photometrie freigeschaltet.";
     } else if (sample.id === "VCOE01_PHOT_ALIQUOT") {
-      els.actionHint.textContent = "Für die quantitative Photometrie werden 10,00 mL dieser Teilprobe mit Ammoniak im Überschuss versetzt und in einem 25,00-mL-Messkolben bis zur Marke aufgefüllt.";
+      els.actionHint.textContent = operationRequirementSatisfied(sample, "COMPLEX_AMMONIA_EXCESS")
+        ? "Die qualitative Ionenanalyse ist abgeschlossen. Jetzt können 10,00 mL der Teilprobe mit Ammoniak im Überschuss versetzt und im 25,00-mL-Messkolben bis zur Marke aufgefüllt werden."
+        : "Die quantitative Photometrie bleibt gesperrt, bis die qualitative Ionenanalyse Cu²⁺ und SO₄²⁻ bestätigt hat.";
     } else if (sample.id === "VCOE01_PHOT_AMMINE") {
       els.actionHint.textContent = "Die tiefblaue Messlösung ist für die Eichkurvenmessung vorbereitet. SpektralLab liefert nur Rohdaten; die Konzentration wird von den SchülerInnen aus der Eichgeraden bestimmt.";
     } else {
       els.actionHint.textContent = "Weitere Stationen werden schrittweise an dieselbe CORE-/RESULT-Schnittstelle angebunden.";
     }
+  }
+
+  function operationRequirementSatisfied(sample, operationId) {
+    const req = sample.operation_requirements && sample.operation_requirements[operationId];
+    if (!req) return true;
+    return state.results.some(function (result) {
+      if (req.result_sample_id && result.sample_id !== req.result_sample_id) return false;
+      if (req.analysis_type && result.analysis_type !== req.analysis_type) return false;
+      if (req.identity_status && (!result.evaluation || result.evaluation.identity_status !== req.identity_status)) return false;
+      if (req.identified) {
+        const identified = result.evaluation && result.evaluation.identified;
+        if (!identified) return false;
+        if (req.identified.cation && identified.cation !== req.identified.cation) return false;
+        if (req.identified.anion && identified.anion !== req.identified.anion) return false;
+      }
+      return true;
+    });
+  }
+
+  function formatIon(value) {
+    const map = {"Cu2+":"Cu²⁺","SO4 2-":"SO₄²⁻"};
+    return map[value] || value || "–";
   }
 
   function isLocalExecutableOperation(sample, op) {
@@ -385,6 +421,36 @@
     }
     saveState();
     render();
+  }
+
+  function startIonFishing(sample) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "ION_FISHING",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "QUALITATIVE_ION_ANALYSIS",
+      input: {
+        model_ref: "probe_05",
+        display_label: "Unbekannte Ionen-Teilprobe",
+        required_evidence: ["NH3_ue", "BaCl2"],
+        note: "Bestimme Kation und Anion durch geeignete Nachweise. Die Stoffidentität wird vom Hub nicht vorgegeben."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../IONENFISCHEN/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
   }
 
   function startSpectralLab(sample) {
@@ -455,21 +521,31 @@
     if (!els.resultGuidance) return;
     const results = state.results
       .filter(function (r) { return r.sample_id === sample.id; })
-      .filter(function (r) { return Array.isArray(r.evaluation && r.evaluation.hints) && r.evaluation.hints.length; });
+      .filter(function (r) {
+        const evaluation = r.evaluation || {};
+        return (Array.isArray(evaluation.hints) && evaluation.hints.length) || evaluation.real_experiment;
+      });
+
     if (!results.length) {
       els.resultGuidance.innerHTML = "";
       els.resultGuidance.hidden = true;
       return;
     }
+
     const latest = results[results.length - 1];
-    const hints = latest.evaluation.hints.map(function (hint) {
-      return "<li>" + escapeHtml(hint) + "</li>";
-    }).join("");
+    const evaluation = latest.evaluation || {};
+    const hints = Array.isArray(evaluation.hints) ? evaluation.hints : [];
+    const hintHtml = hints.length
+      ? '<div class="guidance-box"><strong>Auswertungshinweise</strong><p>Die App hat nur Messdaten übernommen. Die fachliche Auswertung bleibt Teil deiner Arbeit.</p><ol>' +
+        hints.map(function (hint) { return "<li>" + escapeHtml(hint) + "</li>"; }).join("") +
+        "</ol></div>"
+      : "";
+    const realHtml = evaluation.real_experiment
+      ? '<div class="guidance-box real-experiment"><strong>Optionaler Realversuch</strong><p>' + escapeHtml(evaluation.real_experiment) + "</p></div>"
+      : "";
+
     els.resultGuidance.hidden = false;
-    els.resultGuidance.innerHTML =
-      '<div class="guidance-box"><strong>Auswertungshinweise</strong>' +
-      '<p>Die App hat nur Messdaten übernommen. Die Konzentrationsbestimmung bleibt Teil deiner Auswertung.</p>' +
-      '<ol>' + hints + '</ol></div>';
+    els.resultGuidance.innerHTML = hintHtml + realHtml;
   }
 
   function operationAlreadyDone(sampleId, operationId) {
@@ -530,7 +606,8 @@
       TITRATION: "Titrationslabor",
       UVVIS: "UV/VIS-Photometrie",
       UVVIS_SPECTRUM: "UV/VIS-Spektrum",
-      UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie"
+      UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie",
+      QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse"
     };
     return map[id] || id || "Analyse";
   }
