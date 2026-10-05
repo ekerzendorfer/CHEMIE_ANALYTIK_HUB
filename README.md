@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.2.0 – Hub-/Bridge-Architekturtest  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.2.0
+**Version:** v0.3.0 – erste reale Laborintegration  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.2.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -82,3 +82,19 @@ CHEMIE_ANALYTIK_HUB/
 ## Didaktischer Grundsatz
 
 Der Hub transportiert **Probe, Messdaten und technische Resultate** digital. Fachliche Interpretation und Stoffhypothesen bleiben – abhängig vom Aufgabenmodus – bei den Lernenden.
+
+
+## v0.3 – SpektralLab-Integration
+
+Nach dem erfolgreichen Dummy-Rundlauf kann `VCOE01_SOLID_AQ` nun direkt an das bestehende SpektralLab übergeben werden.
+
+Der Hub startet einen Run mit:
+
+- `app_id: SPECTRAL_LAB`
+- `analysis_type: UVVIS_SPECTRUM`
+- einem kleinen `input`-Kontext für die Labor-App
+- Rücksprungadresse zum Hub
+
+Die erste Integration ist bewusst **qualitativ**. Die reale Konzentration der VCÖ-01-Probe ist noch nicht festgelegt. SpektralLab verwendet deshalb intern nur eine didaktische Arbeitskonzentration für die Spektrenform und gibt **keine Konzentrationsbestimmung** zurück.
+
+Das Single-Mode-Prinzip bleibt verbindlich: SpektralLab ohne Bridge-Parameter verhält sich wie bisher.
