@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -8,8 +8,10 @@
     "analysis_type",
     "sample_id",
     "status",
+    "source",
     "measurement"
   ],
+  "source_values": ["app", "manual", "external"],
   "identity_status_values": [
     "unknown",
     "candidate",
@@ -24,6 +26,7 @@
     "app_id": "GC_LAB",
     "analysis_type": "GC",
     "status": "completed",
+    "source": "app",
     "measurement": {
       "peak_count": 2,
       "peaks": [

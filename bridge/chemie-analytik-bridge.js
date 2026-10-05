@@ -1,14 +1,14 @@
-/* CHEMIE_ANALYTIK_BRIDGE v0.1.0
- * Minimaler Browser-Bridge-Entwurf für GitHub Pages.
- * API bewusst klein halten; Speicherbackend kann später ersetzt werden.
+/* CHEMIE_ANALYTIK_BRIDGE v0.2.0
+ * Gemeinsame Browser-Schnittstelle fuer Hub und Labor-Apps auf GitHub Pages.
+ * API bewusst klein halten; Speicherbackend kann spaeter ersetzt werden.
  */
 
 window.AnalytikBridge = (() => {
   const PREFIX = "CHEMIE_ANALYTIK_";
 
-  function readJson(key, fallback = null) {
+  function readJson(storageKey, fallback = null) {
     try {
-      const raw = localStorage.getItem(PREFIX + key);
+      const raw = localStorage.getItem(storageKey);
       return raw ? JSON.parse(raw) : fallback;
     } catch (err) {
       console.error("AnalytikBridge readJson:", err);
@@ -16,64 +16,99 @@ window.AnalytikBridge = (() => {
     }
   }
 
-  function writeJson(key, value) {
-    localStorage.setItem(PREFIX + key, JSON.stringify(value));
+  function writeJson(storageKey, value) {
+    localStorage.setItem(storageKey, JSON.stringify(value));
   }
 
-  function getContext() {
-    return readJson("CONTEXT", {});
-  }
+  function contextKey() { return PREFIX + "CONTEXT"; }
+  function runKey(runId) { return PREFIX + "RUN_" + runId; }
+  function resultKey(resultId) { return PREFIX + "RESULT_" + resultId; }
+
+  function getContext() { return readJson(contextKey(), {}); }
 
   function setContext(context) {
-    writeJson("CONTEXT", context);
+    writeJson(contextKey(), context);
     return context;
   }
 
-  function startRun({ appId, sampleId, caseId = null, sourceResultId = null, peakId = null }) {
-    const runId = `RUN_${Date.now()}`;
+  function startRun(options) {
+    const opts = options || {};
+    if (!opts.appId || !opts.sampleId) throw new Error("startRun benötigt appId und sampleId.");
+
+    const runId = "RUN_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
     const run = {
       run_id: runId,
-      case_id: caseId,
-      sample_id: sampleId,
-      app_id: appId,
-      source_result_id: sourceResultId,
-      peak_id: peakId,
+      case_id: opts.caseId || null,
+      sample_id: opts.sampleId,
+      app_id: opts.appId,
+      analysis_type: opts.analysisType || null,
+      return_url: opts.returnUrl || null,
+      source_result_id: opts.sourceResultId || null,
+      peak_id: opts.peakId || null,
       status: "active",
-      started_at: new Date().toISOString()
+      started_at: new Date().toISOString(),
+      completed_at: null,
+      result_id: null
     };
-    writeJson(`RUN_${runId}`, run);
+
+    writeJson(runKey(runId), run);
     setContext(run);
     return run;
   }
 
   function saveResult(result) {
-    if (!result || !result.result_id) {
-      throw new Error("RESULT benötigt result_id.");
+    if (!result || !result.result_id || !result.run_id) {
+      throw new Error("RESULT benötigt result_id und run_id.");
     }
-    writeJson(`RESULT_${result.result_id}`, result);
+    writeJson(resultKey(result.result_id), result);
     return result;
   }
 
-  function getResult(resultId) {
-    return readJson(`RESULT_${resultId}`);
+  function getRun(runId) { return readJson(runKey(runId)); }
+  function getResult(resultId) { return readJson(resultKey(resultId)); }
+
+  function completeRun(runId, result) {
+    const run = getRun(runId);
+    if (!run) throw new Error("Run " + runId + " wurde nicht gefunden.");
+    if (!result || result.run_id !== runId) throw new Error("RESULT passt nicht zum Run.");
+
+    saveResult(result);
+    const completed = Object.assign({}, run, {
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      result_id: result.result_id
+    });
+    writeJson(runKey(runId), completed);
+    setContext(completed);
+    return completed;
   }
 
-  function getRun(runId) {
-    return readJson(`RUN_${runId}`);
+  function getResultForRun(runId) {
+    const run = getRun(runId);
+    return run && run.result_id ? getResult(run.result_id) : null;
   }
 
-  function returnToHub(hubUrl) {
-    if (hubUrl) window.location.href = hubUrl;
+  function returnToHub(runOrUrl) {
+    const run = typeof runOrUrl === "string" ? getRun(runOrUrl) : runOrUrl;
+    const directUrl = typeof runOrUrl === "string" && runOrUrl.startsWith("http") ? runOrUrl : null;
+    const hubUrl = (run && run.return_url) || directUrl;
+    if (!hubUrl) throw new Error("Keine return_url für den Hub vorhanden.");
+
+    const url = new URL(hubUrl, window.location.href);
+    if (run && run.run_id) url.searchParams.set("resume", run.run_id);
+    window.location.href = url.toString();
   }
 
   return {
-    version: "0.1.0",
-    getContext,
-    setContext,
-    startRun,
-    saveResult,
-    getResult,
-    getRun,
-    returnToHub
+    version: "0.2.0",
+    getContext: getContext,
+    setContext: setContext,
+    startRun: startRun,
+    saveResult: saveResult,
+    completeRun: completeRun,
+    getResult: getResult,
+    getRun: getRun,
+    getResultForRun: getResultForRun,
+    returnToHub: returnToHub
   };
 })();
