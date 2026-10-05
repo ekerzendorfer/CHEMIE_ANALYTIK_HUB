@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.5.0 – Ionenanalyse als Voraussetzung für quantitative Kupfer-Photometrie  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.5.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.6.0 – Destillation mit Runtime-Fraktionen  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.6.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -143,3 +143,19 @@ VCOE01_SOLID_AQ
 Die Freigabebedingung liegt im Sample-Datensatz als `operation_requirements` und wird vom Hub geprüft.
 
 Nach erfolgreicher Ionenanalyse kann der Hub zusätzlich einen einfachen Realversuch anregen: CuSO₄-Lösung mit wenig und anschließend überschüssiger Ammoniaklösung versetzen und Niederschlagsbildung bzw. tiefblaue Komplexlösung beobachten.
+
+
+## v0.6 – Destillation als Sample-erzeugende externe Operation
+
+Das organische Filtrat wird an das DESTILLATIONSLABOR übergeben. Die Fraktionen bleiben im Hub so lange gesperrt, bis ein Destillations-Run mit mindestens 3/5 Sternen bewusst übernommen wurde.
+
+Ein akzeptierter RESULT kann zusätzlich `produced_samples` enthalten. Diese Runtime-Samples verwenden stabile IDs, tragen aber die im konkreten Versuch entstandenen Volumina und internen Zusammensetzungen:
+
+- `VCOE01_F1`
+- `VCOE01_F2`
+- `VCOE01_F3`
+- `VCOE01_RESIDUE`
+
+Die Zusammensetzungen werden im SchülerInnen-Hub nicht angezeigt. Sie dienen als Eingabedaten für nachfolgende Laborstationen, insbesondere GC.
+
+Die für den ersten Test verwendete Startzusammensetzung der flüchtigen Komponenten ist weiterhin ein ausdrücklich markiertes Entwicklungsmodell und keine endgültige VCÖ-01-Rezeptur.
