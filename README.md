@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.3.0 – erste reale Laborintegration  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.2.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.4.0 – quantitative Kupfer-Photometrie vorbereitet  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.4.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -98,3 +98,29 @@ Der Hub startet einen Run mit:
 Die erste Integration ist bewusst **qualitativ**. Die reale Konzentration der VCÖ-01-Probe ist noch nicht festgelegt. SpektralLab verwendet deshalb intern nur eine didaktische Arbeitskonzentration für die Spektrenform und gibt **keine Konzentrationsbestimmung** zurück.
 
 Das Single-Mode-Prinzip bleibt verbindlich: SpektralLab ohne Bridge-Parameter verhält sich wie bisher.
+
+
+## v0.4 – Teilproben und quantitative Kupfer-Photometrie
+
+Der anorganische Ast von VCÖ-01 wird in getrennte Teilproben aufgeteilt:
+
+```text
+VCOE01_SOLID_AQ
+├── VCOE01_ION_ALIQUOT
+└── VCOE01_PHOT_ALIQUOT
+    └── COMPLEX_AMMONIA_EXCESS
+        └── VCOE01_PHOT_AMMINE
+```
+
+Das Entwicklungsmodell verwendet für die quantitative Photometrie:
+
+- Filterrückstand auf 100,0 mL lösen
+- 10,00 mL Teilprobe für Photometrie
+- Ammoniak im Überschuss
+- auf 25,00 mL Messlösung auffüllen
+- Eichstandards 0,003 / 0,006 / 0,009 / 0,012 / 0,015 mol/L
+- interne unbekannte Messkonzentration 0,0100 mol/L
+
+Diese Werte sind ausdrücklich als `development_model` markiert und noch keine endgültige Rezeptur.
+
+Der Hub liefert nach einem quantitativen RESULT nur Auswertungshinweise. Regression, unbekannte Konzentration und Rückrechnung auf die Ausgangsprobe werden nicht automatisch berechnet.
