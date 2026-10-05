@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.4.0",
   "substances": [
     {
       "id": "ETHYL_ACETATE",
@@ -58,7 +58,7 @@
       "priority": "A",
       "app_refs": {
         "ion_fishing": "cu2plus",
-        "spectral_lab": "cu_aquo"
+        "spectral_lab": "copper_aqua"
       }
     },
     {
@@ -78,7 +78,7 @@
       "type": "complex_ion",
       "priority": "A",
       "app_refs": {
-        "spectral_lab": "cu_tetraammine"
+        "spectral_lab": "tetraammine_copper"
       }
     },
     {
@@ -102,20 +102,112 @@
       "id": "SODIUM_HYDROXIDE",
       "name_de": "Natriumhydroxid",
       "formula": "NaOH",
-      "molar_mass_g_mol": 40.00,
+      "molar_mass_g_mol": 40,
       "type": "reagent",
       "priority": "A",
       "app_refs": {
         "titration": "naoh"
       }
     },
-    {"id":"ACETONE","name_de":"Aceton","formula":"C3H6O","molar_mass_g_mol":58.08,"type":"molecular","priority":"B","app_refs":{"distillation":"acetone","gc":"acetone","structure_lab":"acetone"}},
-    {"id":"TOLUENE","name_de":"Toluol","formula":"C7H8","molar_mass_g_mol":92.14,"type":"molecular","priority":"B","app_refs":{"distillation":"toluene","gc":"toluene","structure_lab":"toluene"}},
-    {"id":"METHANOL","name_de":"Methanol","formula":"CH4O","molar_mass_g_mol":32.04,"type":"molecular","priority":"B","app_refs":{"distillation":"methanol","gc":"methanol","structure_lab":"methanol"}},
-    {"id":"ETHANOL","name_de":"Ethanol","formula":"C2H6O","molar_mass_g_mol":46.07,"type":"molecular","priority":"B","app_refs":{"distillation":"ethanol","gc":"ethanol","structure_lab":"ethanol"}},
-    {"id":"CYCLOHEXANE","name_de":"Cyclohexan","formula":"C6H12","molar_mass_g_mol":84.16,"type":"molecular","priority":"B","app_refs":{"distillation":"cyclohexane","gc":"cyclohexane"}},
-    {"id":"ACETIC_ACID","name_de":"Essigsäure","formula":"C2H4O2","molar_mass_g_mol":60.05,"type":"molecular","priority":"B","app_refs":{"titration":"acetic_acid","structure_lab":"acetic_acid"}},
-    {"id":"BENZOIC_ACID","name_de":"Benzoesäure","formula":"C7H6O2","molar_mass_g_mol":122.12,"type":"molecular","priority":"B","app_refs":{"titration":"benzoic_acid","structure_lab":"benzoic_acid"}},
-    {"id":"ASCORBIC_ACID","name_de":"Ascorbinsäure","formula":"C6H8O6","molar_mass_g_mol":176.12,"type":"molecular","priority":"C","app_refs":{"spectral_lab":"ascorbic_acid","structure_lab":"ascorbic_acid"}}
+    {
+      "id": "ACETONE",
+      "name_de": "Aceton",
+      "formula": "C3H6O",
+      "molar_mass_g_mol": 58.08,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "distillation": "acetone",
+        "gc": "acetone",
+        "structure_lab": "acetone"
+      }
+    },
+    {
+      "id": "TOLUENE",
+      "name_de": "Toluol",
+      "formula": "C7H8",
+      "molar_mass_g_mol": 92.14,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "distillation": "toluene",
+        "gc": "toluene",
+        "structure_lab": "toluene"
+      }
+    },
+    {
+      "id": "METHANOL",
+      "name_de": "Methanol",
+      "formula": "CH4O",
+      "molar_mass_g_mol": 32.04,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "distillation": "methanol",
+        "gc": "methanol",
+        "structure_lab": "methanol"
+      }
+    },
+    {
+      "id": "ETHANOL",
+      "name_de": "Ethanol",
+      "formula": "C2H6O",
+      "molar_mass_g_mol": 46.07,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "distillation": "ethanol",
+        "gc": "ethanol",
+        "structure_lab": "ethanol"
+      }
+    },
+    {
+      "id": "CYCLOHEXANE",
+      "name_de": "Cyclohexan",
+      "formula": "C6H12",
+      "molar_mass_g_mol": 84.16,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "distillation": "cyclohexane",
+        "gc": "cyclohexane"
+      }
+    },
+    {
+      "id": "ACETIC_ACID",
+      "name_de": "Essigsäure",
+      "formula": "C2H4O2",
+      "molar_mass_g_mol": 60.05,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "titration": "acetic_acid",
+        "structure_lab": "acetic_acid"
+      }
+    },
+    {
+      "id": "BENZOIC_ACID",
+      "name_de": "Benzoesäure",
+      "formula": "C7H6O2",
+      "molar_mass_g_mol": 122.12,
+      "type": "molecular",
+      "priority": "B",
+      "app_refs": {
+        "titration": "benzoic_acid",
+        "structure_lab": "benzoic_acid"
+      }
+    },
+    {
+      "id": "ASCORBIC_ACID",
+      "name_de": "Ascorbinsäure",
+      "formula": "C6H8O6",
+      "molar_mass_g_mol": 176.12,
+      "type": "molecular",
+      "priority": "C",
+      "app_refs": {
+        "spectral_lab": "ascorbic_acid",
+        "structure_lab": "ascorbic_acid"
+      }
+    }
   ]
 }
