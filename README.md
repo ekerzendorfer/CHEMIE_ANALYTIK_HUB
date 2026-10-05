@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.4.0 – quantitative Kupfer-Photometrie vorbereitet  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.4.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.5.0 – Ionenanalyse als Voraussetzung für quantitative Kupfer-Photometrie  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.5.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -124,3 +124,22 @@ Das Entwicklungsmodell verwendet für die quantitative Photometrie:
 Diese Werte sind ausdrücklich als `development_model` markiert und noch keine endgültige Rezeptur.
 
 Der Hub liefert nach einem quantitativen RESULT nur Auswertungshinweise. Regression, unbekannte Konzentration und Rückrechnung auf die Ausgangsprobe werden nicht automatisch berechnet.
+
+
+## v0.5 – Ionenfischen und evidenzabhängige Freigabe
+
+Der anorganische Ablauf ist nun bewusst sequenziert:
+
+```text
+VCOE01_SOLID_AQ
+├── VCOE01_ION_ALIQUOT → IONENFISCHEN → Cu²⁺ / SO₄²⁻ bestätigt
+└── VCOE01_PHOT_ALIQUOT
+    └── erst nach bestätigtem Ionen-RESULT:
+        COMPLEX_AMMONIA_EXCESS
+        → VCOE01_PHOT_AMMINE
+        → quantitative Photometrie
+```
+
+Die Freigabebedingung liegt im Sample-Datensatz als `operation_requirements` und wird vom Hub geprüft.
+
+Nach erfolgreicher Ionenanalyse kann der Hub zusätzlich einen einfachen Realversuch anregen: CuSO₄-Lösung mit wenig und anschließend überschüssiger Ammoniaklösung versetzen und Niederschlagsbildung bzw. tiefblaue Komplexlösung beobachten.
