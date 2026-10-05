@@ -101,3 +101,6 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .guidance-box p{margin:0 0 8px;color:var(--muted);font-size:.88rem;line-height:1.45}
 .guidance-box ol{margin:0;padding-left:20px;font-size:.88rem;line-height:1.5}
 .guidance-box li+li{margin-top:5px}
+
+.guidance-box.real-experiment{border-color:#d7c18a;background:#fff9e9}
+.guidance-box.real-experiment strong{color:#7c5a13}
