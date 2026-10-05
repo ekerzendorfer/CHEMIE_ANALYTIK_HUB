@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.5.0";
+  const HUB_VERSION = "0.6.0";
 
   const els = {};
   let db = null;
@@ -151,6 +151,7 @@
       completedOperations: [],
       results: [],
       importedResultIds: [],
+      runtimeSamples: {},
       journal: [{
         ts: new Date().toISOString(),
         type: "system",
@@ -183,6 +184,7 @@
     if (!Array.isArray(state.completedOperations)) state.completedOperations = [];
     if (!Array.isArray(state.results)) state.results = [];
     if (!Array.isArray(state.importedResultIds)) state.importedResultIds = [];
+    if (!state.runtimeSamples || typeof state.runtimeSamples !== "object") state.runtimeSamples = {};
     if (!Array.isArray(state.journal)) state.journal = [];
   }
 
@@ -202,15 +204,23 @@
     if (run && run.status === "completed" && result && !state.importedResultIds.includes(result.result_id)) {
       state.results.push(result);
       state.importedResultIds.push(result.result_id);
+      if (Array.isArray(result.produced_samples) && result.produced_samples.length) {
+        applyProducedSamples(result);
+      }
       const journalText = result.analysis_type === "QUALITATIVE_ION_ANALYSIS" && result.evaluation && result.evaluation.identified
         ? "Qualitative Ionenanalyse: " + formatIon(result.evaluation.identified.cation) + " und " + formatIon(result.evaluation.identified.anion) + " bestätigt."
-        : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
+        : result.analysis_type === "FRACTIONAL_DISTILLATION"
+          ? "Destillation übernommen: F1, F2, F3 und Rückstand wurden als Proben erzeugt · Trennqualität " +
+            String(result.evaluation && result.evaluation.quality_score || "–") + "/5."
+          : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
       state.journal.push({
         ts: new Date().toISOString(),
         type: "result",
         text: journalText
       });
-      selectedSampleId = result.sample_id || selectedSampleId;
+      selectedSampleId = result.analysis_type === "FRACTIONAL_DISTILLATION" && result.produced_samples && result.produced_samples[0]
+        ? result.produced_samples[0].sample_id
+        : (result.sample_id || selectedSampleId);
       saveState();
     }
 
@@ -283,6 +293,7 @@
 
     els.detailTitle.textContent = sample.name_de;
     const sampleResults = state.results.filter(function (r) { return r.sample_id === sample.id; });
+    const runtime = state.runtimeSamples[sample.id] || null;
     const stateLabel = sample.physical_state || "–";
     const meta = [
       ["Sample-ID", sample.id],
@@ -290,6 +301,12 @@
       ["Homogen", sample.homogeneous === true ? "ja" : (sample.homogeneous === false ? "nein" : "–")],
       ["Resultate", sampleResults.length]
     ];
+    if (runtime && Number.isFinite(Number(runtime.volume_ml))) {
+      meta.push(["Volumen", Number(runtime.volume_ml).toFixed(1).replace(".", ",") + " mL"]);
+    }
+    if (runtime && runtime.quality && runtime.quality.label_de) {
+      meta.push(["Fraktionsqualität", runtime.quality.label_de]);
+    }
     els.sampleMeta.innerHTML = meta.map(function (pair) {
       return '<div class="meta-item"><b>' + escapeHtml(pair[0]) + '</b>' + escapeHtml(String(pair[1])) + '</div>';
     }).join("");
@@ -312,13 +329,18 @@
       btn.type = "button";
       btn.className = "action-btn";
       const localExecutable = isLocalExecutableOperation(sample, op);
+      const externalExecutable = isExternalExecutableOperation(sample, op);
+      const executable = localExecutable || externalExecutable;
       const done = operationAlreadyDone(sample.id, opId);
       const requirementOk = operationRequirementSatisfied(sample, opId);
-      btn.textContent = (op ? op.name_de : opId) +
-        (!localExecutable ? " · vorbereitet" : (!requirementOk ? " · nach Ionenanalyse" : ""));
-      btn.disabled = !localExecutable || done || !requirementOk;
+      btn.textContent = externalExecutable && opId === "DISTILL"
+        ? "Destillationslabor öffnen"
+        : (op ? op.name_de : opId) + (!executable ? " · vorbereitet" : (!requirementOk ? " · nach Ionenanalyse" : ""));
+      btn.disabled = !executable || done || !requirementOk;
       if (localExecutable && !done && requirementOk) {
         btn.addEventListener("click", function () { executeLocalOperation(sample, op); });
+      } else if (externalExecutable && !done && requirementOk) {
+        btn.addEventListener("click", function () { executeExternalOperation(sample, op); });
       }
       els.actions.appendChild(btn);
     });
@@ -358,6 +380,14 @@
         : "Die quantitative Photometrie bleibt gesperrt, bis die qualitative Ionenanalyse Cu²⁺ und SO₄²⁻ bestätigt hat.";
     } else if (sample.id === "VCOE01_PHOT_AMMINE") {
       els.actionHint.textContent = "Die tiefblaue Messlösung ist für die Eichkurvenmessung vorbereitet. SpektralLab liefert nur Rohdaten; die Konzentration wird von den SchülerInnen aus der Eichgeraden bestimmt.";
+    } else if (sample.id === "VCOE01_FILTRATE") {
+      els.actionHint.textContent = operationAlreadyDone(sample.id, "DISTILL")
+        ? "Der akzeptierte Destillations-Run wurde übernommen. Die erzeugten Fraktionen tragen ihre tatsächlichen virtuellen Zusammensetzungen als Runtime-Daten weiter."
+        : "Destilliere das unbekannte organische Filtrat. Bei 0–2 Sternen erhältst du Optimierungshinweise und kannst einen neuen Run starten; ab 3 Sternen dürfen die Fraktionen an den Hub übergeben werden.";
+    } else if (["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id)) {
+      els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen und wird später an das GC-Lab übergeben.";
+    } else if (sample.id === "VCOE01_RESIDUE") {
+      els.actionHint.textContent = "Im nichtflüchtigen Rückstand bleibt der organische Analyt zurück. Dieser Zweig wird später an das Titrationslabor angebunden.";
     } else {
       els.actionHint.textContent = "Weitere Stationen werden schrittweise an dieselbe CORE-/RESULT-Schnittstelle angebunden.";
     }
@@ -383,6 +413,34 @@
   function formatIon(value) {
     const map = {"Cu2+":"Cu²⁺","SO4 2-":"SO₄²⁻"};
     return map[value] || value || "–";
+  }
+
+  function applyProducedSamples(result) {
+    (result.produced_samples || []).forEach(function (produced) {
+      if (!produced || !produced.sample_id) return;
+      state.runtimeSamples[produced.sample_id] = produced;
+      if (!state.unlockedSamples.includes(produced.sample_id)) state.unlockedSamples.push(produced.sample_id);
+    });
+    if (!operationAlreadyDone(result.sample_id, "DISTILL")) {
+      state.completedOperations.push({
+        sampleId: result.sample_id,
+        operationId: "DISTILL",
+        ts: new Date().toISOString(),
+        resultId: result.result_id
+      });
+    }
+  }
+
+  function isExternalExecutableOperation(sample, op) {
+    return !!(op && op.external_app && (sample.allowed_operations || []).includes(op.id));
+  }
+
+  function executeExternalOperation(sample, op) {
+    if (op && op.id === "DISTILL") {
+      startDestillation(sample);
+      return;
+    }
+    alert("Diese externe Operation ist noch nicht angebunden.");
   }
 
   function isLocalExecutableOperation(sample, op) {
@@ -421,6 +479,51 @@
     }
     saveState();
     render();
+  }
+
+  function startDestillation(sample) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "DESTILLATION_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "FRACTIONAL_DISTILLATION",
+      input: {
+        mode: "fractional",
+        model_ref: "ethylacetate_butanol1",
+        display_label: "Unbekanntes organisches Filtrat",
+        hide_identity: true,
+        development_model: true,
+        initial_volume_ml: 100,
+        initial_component_a_percent: 75,
+        nonvolatile_component: {
+          substance_id: "SALICYLIC_ACID",
+          role: "residue_analyte"
+        },
+        minimum_quality_score: 3,
+        produced_sample_ids: {
+          fraction_1: "VCOE01_F1",
+          fraction_2: "VCOE01_F2",
+          fraction_3: "VCOE01_F3",
+          residue: "VCOE01_RESIDUE"
+        },
+        note: "Optimiere die fraktionierende Destillation. Die Stoffidentitäten und internen Zusammensetzungen bleiben verborgen. Ab 3 von 5 Sternen kann ein Run an den Hub übernommen werden."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../DESTILLATIONSLABOR/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
   }
 
   function startIonFishing(sample) {
@@ -607,7 +710,8 @@
       UVVIS: "UV/VIS-Photometrie",
       UVVIS_SPECTRUM: "UV/VIS-Spektrum",
       UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie",
-      QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse"
+      QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse",
+      FRACTIONAL_DISTILLATION: "Fraktionierende Destillation"
     };
     return map[id] || id || "Analyse";
   }
