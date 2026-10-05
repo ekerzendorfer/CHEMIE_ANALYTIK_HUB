@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.2.0";
+  const HUB_VERSION = "0.3.0";
 
   const els = {};
   let db = null;
@@ -315,14 +315,14 @@
     analyses.forEach(function (analysis) {
       const btn = document.createElement("button");
       btn.type = "button";
-      const dummyEnabled = sample.id === "VCOE01_SOLID_AQ" && analysis === "SPECTRAL_LAB";
-      btn.className = "action-btn " + (dummyEnabled ? "" : "secondary");
-      btn.disabled = !dummyEnabled;
-      btn.textContent = dummyEnabled
-        ? prettyAnalysis(analysis) + " · Bridge-Test starten"
+      const spectralEnabled = sample.id === "VCOE01_SOLID_AQ" && analysis === "SPECTRAL_LAB";
+      btn.className = "action-btn " + (spectralEnabled ? "" : "secondary");
+      btn.disabled = !spectralEnabled;
+      btn.textContent = spectralEnabled
+        ? prettyAnalysis(analysis) + " öffnen"
         : prettyAnalysis(analysis) + " · vorbereitet";
-      if (dummyEnabled) {
-        btn.addEventListener("click", function () { startDummyAnalysis(sample, analysis); });
+      if (spectralEnabled) {
+        btn.addEventListener("click", function () { startSpectralLab(sample); });
       }
       els.actions.appendChild(btn);
     });
@@ -332,7 +332,7 @@
     } else if (sample.id === "VCOE01_SOLID") {
       els.actionHint.textContent = "Der Filterrückstand kann nun in Wasser gelöst werden; dadurch entsteht eine neue wässrige Analyseprobe.";
     } else if (sample.id === "VCOE01_SOLID_AQ") {
-      els.actionHint.textContent = "Für SpektralLab ist in v0.2 zunächst nur ein technischer Dummy-Rundlauf aktiv. Er prüft Hub → Laborstation → RESULT → Hub, noch ohne fachliche Photometriesimulation.";
+      els.actionHint.textContent = "SpektralLab kann diese wässrige Teilprobe jetzt direkt übernehmen. In dieser ersten realen Integration wird bewusst nur ein qualitativer UV/VIS-Spektrenlauf durchgeführt; die quantitative Fallkonzentration ist noch nicht festgelegt.";
     } else {
       els.actionHint.textContent = "Weitere Stationen werden schrittweise an dieselbe CORE-/RESULT-Schnittstelle angebunden.";
     }
@@ -376,7 +376,7 @@
     render();
   }
 
-  function startDummyAnalysis(sample, analysisType) {
+  function startSpectralLab(sample) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
       return;
@@ -387,14 +387,25 @@
     returnUrl.hash = "";
 
     const run = window.AnalytikBridge.startRun({
-      appId: "DUMMY_LAB",
+      appId: "SPECTRAL_LAB",
       sampleId: sample.id,
       caseId: db.case.id,
-      analysisType: analysisType,
+      analysisType: "UVVIS_SPECTRUM",
+      input: {
+        mode: "spectrum",
+        model_ref: "copper_aqua",
+        display_label: "Unbekannte wässrige Teilprobe",
+        hide_identity: true,
+        quantitative: false,
+        path_length_cm: 1.0,
+        range_nm: [380, 800],
+        measurement_wavelength_nm: 750,
+        note: "Qualitativer Integrationslauf: Die reale Fallkonzentration ist noch nicht festgelegt. SpektralLab verwendet intern nur eine didaktische Arbeitskonzentration und gibt keine Konzentrationsbestimmung zurück."
+      },
       returnUrl: returnUrl.toString()
     });
 
-    const target = new URL("dummy-lab.html", window.location.href);
+    const target = new URL("../VIRTUELLES_PHOTOMETER/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
     window.location.href = target.toString();
@@ -456,7 +467,8 @@
       SPECTRAL_LAB: "SpektralLab",
       GC_LAB: "GC-Lab",
       TITRATION: "Titrationslabor",
-      UVVIS: "UV/VIS-Photometrie"
+      UVVIS: "UV/VIS-Photometrie",
+      UVVIS_SPECTRUM: "UV/VIS-Spektrum"
     };
     return map[id] || id || "Analyse";
   }

@@ -1,4 +1,4 @@
-/* CHEMIE_ANALYTIK_BRIDGE v0.2.0
+/* CHEMIE_ANALYTIK_BRIDGE v0.2.1
  * Gemeinsame Browser-Schnittstelle fuer Hub und Labor-Apps auf GitHub Pages.
  * API bewusst klein halten; Speicherbackend kann spaeter ersetzt werden.
  */
@@ -42,6 +42,7 @@ window.AnalytikBridge = (() => {
       sample_id: opts.sampleId,
       app_id: opts.appId,
       analysis_type: opts.analysisType || null,
+      input: opts.input || null,
       return_url: opts.returnUrl || null,
       source_result_id: opts.sourceResultId || null,
       peak_id: opts.peakId || null,
@@ -100,7 +101,7 @@ window.AnalytikBridge = (() => {
   }
 
   return {
-    version: "0.2.0",
+    version: "0.2.1",
     getContext: getContext,
     setContext: setContext,
     startRun: startRun,
