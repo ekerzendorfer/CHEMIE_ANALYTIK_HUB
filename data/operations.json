@@ -1,35 +1,68 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.4.0",
   "operations": [
     {
       "id": "FILTER",
       "name_de": "Filtration",
       "category": "sample_preparation",
       "creates_samples": true,
-      "input_requirements": {"heterogeneous": true},
-      "output_roles": ["filtrate", "filter_residue"]
+      "input_requirements": {
+        "heterogeneous": true
+      },
+      "output_roles": [
+        "filtrate",
+        "filter_residue"
+      ]
     },
     {
       "id": "CENTRIFUGE",
       "name_de": "Zentrifugieren",
       "category": "sample_preparation",
       "creates_samples": true,
-      "input_requirements": {"heterogeneous": true},
-      "output_roles": ["supernatant", "sediment"]
+      "input_requirements": {
+        "heterogeneous": true
+      },
+      "output_roles": [
+        "supernatant",
+        "sediment"
+      ]
     },
     {
       "id": "DISSOLVE_WATER",
       "name_de": "In Wasser lösen",
       "category": "sample_preparation",
       "creates_samples": true,
-      "output_roles": ["aqueous_solution"]
+      "output_roles": [
+        "aqueous_solution"
+      ]
+    },
+    {
+      "id": "PREPARE_ALIQUOTS",
+      "name_de": "Teilproben vorbereiten",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "output_roles": [
+        "ion_analysis_aliquot",
+        "photometry_aliquot"
+      ]
+    },
+    {
+      "id": "COMPLEX_AMMONIA_EXCESS",
+      "name_de": "Mit Ammoniaküberschuss komplexieren",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "output_roles": [
+        "complexed_measurement_solution"
+      ]
     },
     {
       "id": "DILUTE",
       "name_de": "Verdünnen",
       "category": "sample_preparation",
       "creates_samples": true,
-      "output_roles": ["diluted_sample"]
+      "output_roles": [
+        "diluted_sample"
+      ]
     },
     {
       "id": "DISTILL",
@@ -37,7 +70,12 @@
       "category": "separation",
       "creates_samples": true,
       "external_app": "DESTILLATION",
-      "output_roles": ["fraction_1", "fraction_2", "fraction_3", "residue"]
+      "output_roles": [
+        "fraction_1",
+        "fraction_2",
+        "fraction_3",
+        "residue"
+      ]
     },
     {
       "id": "EXTRACT_LLE",
@@ -45,7 +83,10 @@
       "category": "separation",
       "creates_samples": true,
       "status": "reserved",
-      "output_roles": ["aqueous_phase", "organic_phase"]
+      "output_roles": [
+        "aqueous_phase",
+        "organic_phase"
+      ]
     }
   ]
 }
