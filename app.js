@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.3.0";
+  const HUB_VERSION = "0.4.0";
 
   const els = {};
   let db = null;
@@ -34,7 +34,7 @@
     [
       "schemaBadge", "caseTitle", "caseDescription", "sampleTree", "detailTitle",
       "sampleMeta", "actions", "actionHint", "journal", "validatorSummary",
-      "validatorDetails", "resetBtn", "toggleDiag"
+      "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
@@ -288,6 +288,7 @@
 
     els.actions.innerHTML = "";
     els.actionHint.textContent = "";
+    renderResultGuidance(sample);
 
     const ops = sample.allowed_operations || [];
     const analyses = sample.compatible_analyses || [];
@@ -315,12 +316,16 @@
     analyses.forEach(function (analysis) {
       const btn = document.createElement("button");
       btn.type = "button";
-      const spectralEnabled = sample.id === "VCOE01_SOLID_AQ" && analysis === "SPECTRAL_LAB";
+      const spectralQualitative = sample.id === "VCOE01_SOLID_AQ" && analysis === "SPECTRAL_LAB";
+      const spectralCalibration = sample.id === "VCOE01_PHOT_AMMINE" && analysis === "SPECTRAL_LAB";
+      const spectralEnabled = spectralQualitative || spectralCalibration;
       btn.className = "action-btn " + (spectralEnabled ? "" : "secondary");
       btn.disabled = !spectralEnabled;
-      btn.textContent = spectralEnabled
-        ? prettyAnalysis(analysis) + " öffnen"
-        : prettyAnalysis(analysis) + " · vorbereitet";
+      btn.textContent = spectralCalibration
+        ? "Quantitative Photometrie öffnen"
+        : spectralEnabled
+          ? prettyAnalysis(analysis) + " öffnen"
+          : prettyAnalysis(analysis) + " · vorbereitet";
       if (spectralEnabled) {
         btn.addEventListener("click", function () { startSpectralLab(sample); });
       }
@@ -332,7 +337,13 @@
     } else if (sample.id === "VCOE01_SOLID") {
       els.actionHint.textContent = "Der Filterrückstand kann nun in Wasser gelöst werden; dadurch entsteht eine neue wässrige Analyseprobe.";
     } else if (sample.id === "VCOE01_SOLID_AQ") {
-      els.actionHint.textContent = "SpektralLab kann diese wässrige Teilprobe jetzt direkt übernehmen. In dieser ersten realen Integration wird bewusst nur ein qualitativer UV/VIS-Spektrenlauf durchgeführt; die quantitative Fallkonzentration ist noch nicht festgelegt.";
+      els.actionHint.textContent = "Der Filterrückstand wurde quantitativ in Wasser gelöst und im Entwicklungsmodell auf 100,0 mL aufgefüllt. Die Stocklösung kann qualitativ untersucht oder in getrennte Teilproben für Ionenanalyse und quantitative Photometrie aufgeteilt werden.";
+    } else if (sample.id === "VCOE01_ION_ALIQUOT") {
+      els.actionHint.textContent = "Diese Teilprobe ist für den qualitativen Ionennachweis reserviert. Die Ionenfischen-App wird in einem späteren Integrationsschritt angebunden.";
+    } else if (sample.id === "VCOE01_PHOT_ALIQUOT") {
+      els.actionHint.textContent = "Für die quantitative Photometrie werden 10,00 mL dieser Teilprobe mit Ammoniak im Überschuss versetzt und in einem 25,00-mL-Messkolben bis zur Marke aufgefüllt.";
+    } else if (sample.id === "VCOE01_PHOT_AMMINE") {
+      els.actionHint.textContent = "Die tiefblaue Messlösung ist für die Eichkurvenmessung vorbereitet. SpektralLab liefert nur Rohdaten; die Konzentration wird von den SchülerInnen aus der Eichgeraden bestimmt.";
     } else {
       els.actionHint.textContent = "Weitere Stationen werden schrittweise an dieselbe CORE-/RESULT-Schnittstelle angebunden.";
     }
@@ -386,12 +397,33 @@
     returnUrl.search = "";
     returnUrl.hash = "";
 
-    const run = window.AnalytikBridge.startRun({
-      appId: "SPECTRAL_LAB",
-      sampleId: sample.id,
-      caseId: db.case.id,
-      analysisType: "UVVIS_SPECTRUM",
-      input: {
+    let analysisType;
+    let input;
+
+    if (sample.id === "VCOE01_PHOT_AMMINE") {
+      analysisType = "UVVIS_CALIBRATION";
+      input = {
+        mode: "calibration",
+        model_ref: "tetraammine_copper",
+        display_label: "Aufbereitete Messlösung",
+        quantitative: true,
+        wavelength_nm: 620,
+        path_length_cm: 1.0,
+        standards_mol_l: [0.003, 0.006, 0.009, 0.012, 0.015],
+        unknown_concentration_mol_l: 0.0100,
+        lab_mode: "normal",
+        note: "Bestimme die Konzentration der unbekannten Messlösung aus einer selbst ausgewerteten Eichgeraden. SpektralLab gibt keine berechnete Konzentration zurück.",
+        evaluation_hints: [
+          "Trage die Konzentrationen der Standards gegen ihre Absorbanzen auf und bestimme eine lineare Ausgleichsgerade A = m·c + b.",
+          "Bestimme aus der Absorbanz der unbekannten Messlösung ihre Konzentration mit c = (A - b) / m. Bei Mehrfachmessungen verwende einen geeigneten Mittelwert.",
+          "Die Messlösung wurde aus 10,00 mL Teilprobe hergestellt und auf 25,00 mL aufgefüllt. Rechne mit diesem Verdünnungsfaktor auf die wässrige Stocklösung zurück.",
+          "Der Filterrückstand wurde im Entwicklungsmodell auf 100,0 mL gelöst. Bestimme daraus die Stoffmenge an Cu²⁺.",
+          "Wenn Cu²⁺ und SO₄²⁻ qualitativ bestätigt sind, kannst du aus der Stoffmenge und der molaren Masse die Masse des ursprünglichen Kupfer(II)-sulfat-Pentahydrats bestimmen."
+        ]
+      };
+    } else {
+      analysisType = "UVVIS_SPECTRUM";
+      input = {
         mode: "spectrum",
         model_ref: "copper_aqua",
         display_label: "Unbekannte wässrige Teilprobe",
@@ -400,8 +432,16 @@
         path_length_cm: 1.0,
         range_nm: [380, 800],
         measurement_wavelength_nm: 750,
-        note: "Qualitativer Integrationslauf: Die reale Fallkonzentration ist noch nicht festgelegt. SpektralLab verwendet intern nur eine didaktische Arbeitskonzentration und gibt keine Konzentrationsbestimmung zurück."
-      },
+        note: "Qualitativer Integrationslauf: Die reale Fallkonzentration ist noch nicht als endgültige Rezeptur festgelegt. Es wird keine quantitative Konzentration zurückgegeben."
+      };
+    }
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "SPECTRAL_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: analysisType,
+      input: input,
       returnUrl: returnUrl.toString()
     });
 
@@ -409,6 +449,27 @@
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
     window.location.href = target.toString();
+  }
+
+  function renderResultGuidance(sample) {
+    if (!els.resultGuidance) return;
+    const results = state.results
+      .filter(function (r) { return r.sample_id === sample.id; })
+      .filter(function (r) { return Array.isArray(r.evaluation && r.evaluation.hints) && r.evaluation.hints.length; });
+    if (!results.length) {
+      els.resultGuidance.innerHTML = "";
+      els.resultGuidance.hidden = true;
+      return;
+    }
+    const latest = results[results.length - 1];
+    const hints = latest.evaluation.hints.map(function (hint) {
+      return "<li>" + escapeHtml(hint) + "</li>";
+    }).join("");
+    els.resultGuidance.hidden = false;
+    els.resultGuidance.innerHTML =
+      '<div class="guidance-box"><strong>Auswertungshinweise</strong>' +
+      '<p>Die App hat nur Messdaten übernommen. Die Konzentrationsbestimmung bleibt Teil deiner Auswertung.</p>' +
+      '<ol>' + hints + '</ol></div>';
   }
 
   function operationAlreadyDone(sampleId, operationId) {
@@ -468,7 +529,8 @@
       GC_LAB: "GC-Lab",
       TITRATION: "Titrationslabor",
       UVVIS: "UV/VIS-Photometrie",
-      UVVIS_SPECTRUM: "UV/VIS-Spektrum"
+      UVVIS_SPECTRUM: "UV/VIS-Spektrum",
+      UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie"
     };
     return map[id] || id || "Analyse";
   }

@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.4.0",
   "samples": [
     {
       "id": "VCOE01_RAW",
@@ -9,12 +9,27 @@
       "physical_state": "liquid_with_suspended_solid",
       "homogeneous": false,
       "composition_internal": [
-        {"substance_id": "ETHYL_ACETATE", "fraction_model": 0.62},
-        {"substance_id": "BUTAN_1_OL", "fraction_model": 0.18},
-        {"substance_id": "SALICYLIC_ACID", "fraction_model": 0.08},
-        {"substance_id": "COPPER_SULFATE_PENTAHYDRATE", "fraction_model": 0.12}
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "fraction_model": 0.62
+        },
+        {
+          "substance_id": "BUTAN_1_OL",
+          "fraction_model": 0.18
+        },
+        {
+          "substance_id": "SALICYLIC_ACID",
+          "fraction_model": 0.08
+        },
+        {
+          "substance_id": "COPPER_SULFATE_PENTAHYDRATE",
+          "fraction_model": 0.12
+        }
       ],
-      "allowed_operations": ["FILTER", "CENTRIFUGE"]
+      "allowed_operations": [
+        "FILTER",
+        "CENTRIFUGE"
+      ]
     },
     {
       "id": "VCOE01_SOLID",
@@ -26,9 +41,14 @@
       "physical_state": "solid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "COPPER_SULFATE_PENTAHYDRATE", "fraction_model": 1.0}
+        {
+          "substance_id": "COPPER_SULFATE_PENTAHYDRATE",
+          "fraction_model": 1
+        }
       ],
-      "allowed_operations": ["DISSOLVE_WATER"]
+      "allowed_operations": [
+        "DISSOLVE_WATER"
+      ]
     },
     {
       "id": "VCOE01_SOLID_AQ",
@@ -40,11 +60,136 @@
       "physical_state": "aqueous_solution",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "COPPER_II_AQ", "role": "analyte"},
-        {"substance_id": "SULFATE_AQ", "role": "analyte"},
-        {"substance_id": "WATER", "role": "solvent"}
+        {
+          "substance_id": "COPPER_II_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "SULFATE_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "WATER",
+          "role": "solvent"
+        }
       ],
-      "compatible_analyses": ["ION_FISHING", "SPECTRAL_LAB"]
+      "compatible_analyses": [
+        "SPECTRAL_LAB"
+      ],
+      "allowed_operations": [
+        "PREPARE_ALIQUOTS"
+      ],
+      "preparation_internal": {
+        "status": "development_model",
+        "dissolved_to_volume_ml": 100,
+        "copper_stock_concentration_mol_l": 0.025,
+        "note": "Entwicklungsmodell für die spätere Rückrechnung; noch keine endgültige VCÖ-01-Rezeptur."
+      }
+    },
+    {
+      "id": "VCOE01_ION_ALIQUOT",
+      "case_id": "VCOE01",
+      "name_de": "Teilprobe für Ionenanalyse",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_SOLID_AQ",
+      "created_by": "PREPARE_ALIQUOTS",
+      "physical_state": "aqueous_solution",
+      "homogeneous": true,
+      "composition_internal": [
+        {
+          "substance_id": "COPPER_II_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "SULFATE_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "WATER",
+          "role": "solvent"
+        }
+      ],
+      "preparation_internal": {
+        "status": "development_model",
+        "aliquot_volume_ml": 5
+      },
+      "compatible_analyses": [
+        "ION_FISHING"
+      ]
+    },
+    {
+      "id": "VCOE01_PHOT_ALIQUOT",
+      "case_id": "VCOE01",
+      "name_de": "Teilprobe für quantitative Photometrie",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_SOLID_AQ",
+      "created_by": "PREPARE_ALIQUOTS",
+      "physical_state": "aqueous_solution",
+      "homogeneous": true,
+      "composition_internal": [
+        {
+          "substance_id": "COPPER_II_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "SULFATE_AQ",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "WATER",
+          "role": "solvent"
+        }
+      ],
+      "preparation_internal": {
+        "status": "development_model",
+        "aliquot_volume_ml": 10
+      },
+      "allowed_operations": [
+        "COMPLEX_AMMONIA_EXCESS"
+      ]
+    },
+    {
+      "id": "VCOE01_PHOT_AMMINE",
+      "case_id": "VCOE01",
+      "name_de": "Aufbereitete Messlösung für Photometrie",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_PHOT_ALIQUOT",
+      "created_by": "COMPLEX_AMMONIA_EXCESS",
+      "physical_state": "aqueous_solution",
+      "homogeneous": true,
+      "composition_internal": [
+        {
+          "substance_id": "TETRAAMMINE_COPPER_II",
+          "role": "analyte"
+        },
+        {
+          "substance_id": "SULFATE_AQ",
+          "role": "counterion"
+        },
+        {
+          "substance_id": "AMMONIA_AQ",
+          "role": "reagent_excess"
+        },
+        {
+          "substance_id": "WATER",
+          "role": "solvent"
+        }
+      ],
+      "preparation_internal": {
+        "status": "development_model",
+        "aliquot_volume_ml": 10,
+        "final_volume_ml": 25,
+        "dilution_factor": 2.5,
+        "target_measurement_concentration_mol_l": 0.01,
+        "calibration_range_mol_l": [
+          0.003,
+          0.015
+        ],
+        "note": "Interner Entwicklungswert; SchülerInnen erhalten die wahre Konzentration nicht."
+      },
+      "compatible_analyses": [
+        "SPECTRAL_LAB"
+      ]
     },
     {
       "id": "VCOE01_FILTRATE",
@@ -56,11 +201,22 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "ETHYL_ACETATE", "role": "major_component"},
-        {"substance_id": "BUTAN_1_OL", "role": "component"},
-        {"substance_id": "SALICYLIC_ACID", "role": "nonvolatile_solute"}
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "role": "major_component"
+        },
+        {
+          "substance_id": "BUTAN_1_OL",
+          "role": "component"
+        },
+        {
+          "substance_id": "SALICYLIC_ACID",
+          "role": "nonvolatile_solute"
+        }
       ],
-      "allowed_operations": ["DISTILL"]
+      "allowed_operations": [
+        "DISTILL"
+      ]
     },
     {
       "id": "VCOE01_F1",
@@ -72,10 +228,18 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "ETHYL_ACETATE", "role": "major_component"},
-        {"substance_id": "BUTAN_1_OL", "role": "minor_component"}
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "role": "major_component"
+        },
+        {
+          "substance_id": "BUTAN_1_OL",
+          "role": "minor_component"
+        }
       ],
-      "compatible_analyses": ["GC_LAB"]
+      "compatible_analyses": [
+        "GC_LAB"
+      ]
     },
     {
       "id": "VCOE01_F2",
@@ -87,10 +251,18 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "ETHYL_ACETATE", "role": "component"},
-        {"substance_id": "BUTAN_1_OL", "role": "component"}
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "role": "component"
+        },
+        {
+          "substance_id": "BUTAN_1_OL",
+          "role": "component"
+        }
       ],
-      "compatible_analyses": ["GC_LAB"]
+      "compatible_analyses": [
+        "GC_LAB"
+      ]
     },
     {
       "id": "VCOE01_F3",
@@ -102,9 +274,14 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "BUTAN_1_OL", "role": "major_component"}
+        {
+          "substance_id": "BUTAN_1_OL",
+          "role": "major_component"
+        }
       ],
-      "compatible_analyses": ["GC_LAB"]
+      "compatible_analyses": [
+        "GC_LAB"
+      ]
     },
     {
       "id": "VCOE01_RESIDUE",
@@ -116,9 +293,14 @@
       "physical_state": "liquid_or_solution",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "SALICYLIC_ACID", "role": "analyte"}
+        {
+          "substance_id": "SALICYLIC_ACID",
+          "role": "analyte"
+        }
       ],
-      "compatible_analyses": ["TITRATION"]
+      "compatible_analyses": [
+        "TITRATION"
+      ]
     },
     {
       "id": "STD_ETHYL_ACETATE",
@@ -127,9 +309,14 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "ETHYL_ACETATE", "fraction_model": 1.0}
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "fraction_model": 1
+        }
       ],
-      "compatible_analyses": ["GC_LAB"]
+      "compatible_analyses": [
+        "GC_LAB"
+      ]
     },
     {
       "id": "STD_BUTAN_1_OL",
@@ -138,9 +325,14 @@
       "physical_state": "liquid",
       "homogeneous": true,
       "composition_internal": [
-        {"substance_id": "BUTAN_1_OL", "fraction_model": 1.0}
+        {
+          "substance_id": "BUTAN_1_OL",
+          "fraction_model": 1
+        }
       ],
-      "compatible_analyses": ["GC_LAB"]
+      "compatible_analyses": [
+        "GC_LAB"
+      ]
     }
   ]
 }
