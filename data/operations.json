@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.4.0",
+  "schema_version": "0.6.0",
   "operations": [
     {
       "id": "FILTER",
@@ -69,13 +69,19 @@
       "name_de": "Destillieren",
       "category": "separation",
       "creates_samples": true,
-      "external_app": "DESTILLATION",
+      "external_app": "DESTILLATION_LAB",
       "output_roles": [
         "fraction_1",
         "fraction_2",
         "fraction_3",
         "residue"
-      ]
+      ],
+      "acceptance_policy": {
+        "minimum_quality_score": 3,
+        "score_max": 5,
+        "repeat_until_accepted": true,
+        "note_de": "0–2 Sterne: neuer Run empfohlen und keine Rückgabe. Ab 3 Sternen können die erzeugten Fraktionen übernommen werden."
+      }
     },
     {
       "id": "EXTRACT_LLE",
