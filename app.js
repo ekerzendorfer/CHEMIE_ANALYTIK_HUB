@@ -337,11 +337,11 @@
     } else if (sample.id === "VCOE01_SOLID") {
       els.actionHint.textContent = "Der Filterrückstand kann nun in Wasser gelöst werden; dadurch entsteht eine neue wässrige Analyseprobe.";
     } else if (sample.id === "VCOE01_SOLID_AQ") {
-      els.actionHint.textContent = "Die wässrige Stocklösung kann qualitativ untersucht oder in getrennte Teilproben für Ionenanalyse und quantitative Photometrie aufgeteilt werden.";
+      els.actionHint.textContent = "Der Filterrückstand wurde quantitativ in Wasser gelöst und im Entwicklungsmodell auf 100,0 mL aufgefüllt. Die Stocklösung kann qualitativ untersucht oder in getrennte Teilproben für Ionenanalyse und quantitative Photometrie aufgeteilt werden.";
     } else if (sample.id === "VCOE01_ION_ALIQUOT") {
       els.actionHint.textContent = "Diese Teilprobe ist für den qualitativen Ionennachweis reserviert. Die Ionenfischen-App wird in einem späteren Integrationsschritt angebunden.";
     } else if (sample.id === "VCOE01_PHOT_ALIQUOT") {
-      els.actionHint.textContent = "Für die quantitative Photometrie wird die Teilprobe zunächst mit Ammoniak im Überschuss versetzt und auf ein definiertes Endvolumen gebracht.";
+      els.actionHint.textContent = "Für die quantitative Photometrie werden 10,00 mL dieser Teilprobe mit Ammoniak im Überschuss versetzt und in einem 25,00-mL-Messkolben bis zur Marke aufgefüllt.";
     } else if (sample.id === "VCOE01_PHOT_AMMINE") {
       els.actionHint.textContent = "Die tiefblaue Messlösung ist für die Eichkurvenmessung vorbereitet. SpektralLab liefert nur Rohdaten; die Konzentration wird von den SchülerInnen aus der Eichgeraden bestimmt.";
     } else {
