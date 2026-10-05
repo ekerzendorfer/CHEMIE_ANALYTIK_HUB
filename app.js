@@ -504,6 +504,10 @@
         development_model: true,
         initial_volume_ml: 100,
         initial_component_a_percent: 75,
+        component_ids: {
+          a: "ETHYL_ACETATE",
+          b: "BUTAN_1_OL"
+        },
         nonvolatile_component: {
           substance_id: "SALICYLIC_ACID",
           role: "residue_analyte"
