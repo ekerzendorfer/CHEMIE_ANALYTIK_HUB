@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.4.0",
+  "schema_version": "0.5.0",
   "samples": [
     {
       "id": "VCOE01_RAW",
@@ -73,9 +73,7 @@
           "role": "solvent"
         }
       ],
-      "compatible_analyses": [
-        "SPECTRAL_LAB"
-      ],
+      "compatible_analyses": [],
       "allowed_operations": [
         "PREPARE_ALIQUOTS"
       ],
@@ -146,7 +144,18 @@
       },
       "allowed_operations": [
         "COMPLEX_AMMONIA_EXCESS"
-      ]
+      ],
+      "operation_requirements": {
+        "COMPLEX_AMMONIA_EXCESS": {
+          "result_sample_id": "VCOE01_ION_ALIQUOT",
+          "analysis_type": "QUALITATIVE_ION_ANALYSIS",
+          "identity_status": "confirmed",
+          "identified": {
+            "cation": "Cu2+",
+            "anion": "SO4 2-"
+          }
+        }
+      }
     },
     {
       "id": "VCOE01_PHOT_AMMINE",
