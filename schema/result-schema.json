@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.2.0",
+  "schema_version": "0.6.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -11,7 +11,11 @@
     "source",
     "measurement"
   ],
-  "source_values": ["app", "manual", "external"],
+  "source_values": [
+    "app",
+    "manual",
+    "external"
+  ],
   "identity_status_values": [
     "unknown",
     "candidate",
@@ -30,16 +34,46 @@
     "measurement": {
       "peak_count": 2,
       "peaks": [
-        {"peak_id": "P1", "retention_time_min": 2.41, "area": 1834},
-        {"peak_id": "P2", "retention_time_min": 4.83, "area": 492}
+        {
+          "peak_id": "P1",
+          "retention_time_min": 2.41,
+          "area": 1834
+        },
+        {
+          "peak_id": "P2",
+          "retention_time_min": 4.83,
+          "area": 492
+        }
       ]
     },
     "evaluation": {
       "minimum_resolution": 1.72
     },
     "student_interpretation": {
-      "P1": {"identity_status": "unknown"},
-      "P2": {"identity_status": "unknown"}
+      "P1": {
+        "identity_status": "unknown"
+      },
+      "P2": {
+        "identity_status": "unknown"
+      }
     }
+  },
+  "optional_fields": [
+    "evaluation",
+    "student_interpretation",
+    "produced_samples"
+  ],
+  "produced_samples_contract": {
+    "description_de": "Von Trennoperationen erzeugte Runtime-Samples. Die statische SAMPLE-ID bleibt stabil; Mess-/Zusammensetzungsdaten entstehen erst im konkreten Run.",
+    "required_fields": [
+      "sample_id",
+      "role",
+      "volume_ml"
+    ],
+    "optional_fields": [
+      "composition_internal",
+      "quality",
+      "metadata"
+    ]
   }
 }
