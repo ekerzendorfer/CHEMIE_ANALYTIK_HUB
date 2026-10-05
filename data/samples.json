@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.5.0",
+  "schema_version": "0.6.0",
   "samples": [
     {
       "id": "VCOE01_RAW",
@@ -239,16 +239,17 @@
       "composition_internal": [
         {
           "substance_id": "ETHYL_ACETATE",
-          "role": "major_component"
+          "role": "volatile_component"
         },
         {
           "substance_id": "BUTAN_1_OL",
-          "role": "minor_component"
+          "role": "volatile_component"
         }
       ],
       "compatible_analyses": [
         "GC_LAB"
-      ]
+      ],
+      "runtime_generated": true
     },
     {
       "id": "VCOE01_F2",
@@ -262,16 +263,17 @@
       "composition_internal": [
         {
           "substance_id": "ETHYL_ACETATE",
-          "role": "component"
+          "role": "volatile_component"
         },
         {
           "substance_id": "BUTAN_1_OL",
-          "role": "component"
+          "role": "volatile_component"
         }
       ],
       "compatible_analyses": [
         "GC_LAB"
-      ]
+      ],
+      "runtime_generated": true
     },
     {
       "id": "VCOE01_F3",
@@ -284,13 +286,18 @@
       "homogeneous": true,
       "composition_internal": [
         {
+          "substance_id": "ETHYL_ACETATE",
+          "role": "volatile_component"
+        },
+        {
           "substance_id": "BUTAN_1_OL",
-          "role": "major_component"
+          "role": "volatile_component"
         }
       ],
       "compatible_analyses": [
         "GC_LAB"
-      ]
+      ],
+      "runtime_generated": true
     },
     {
       "id": "VCOE01_RESIDUE",
@@ -304,12 +311,21 @@
       "composition_internal": [
         {
           "substance_id": "SALICYLIC_ACID",
-          "role": "analyte"
+          "role": "nonvolatile_analyte"
+        },
+        {
+          "substance_id": "ETHYL_ACETATE",
+          "role": "possible_residual_volatile"
+        },
+        {
+          "substance_id": "BUTAN_1_OL",
+          "role": "possible_residual_volatile"
         }
       ],
       "compatible_analyses": [
         "TITRATION"
-      ]
+      ],
+      "runtime_generated": true
     },
     {
       "id": "STD_ETHYL_ACETATE",
