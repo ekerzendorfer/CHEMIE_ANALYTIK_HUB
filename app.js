@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.6.0";
+  const HUB_VERSION = "0.7.0";
 
   const els = {};
   let db = null;
@@ -350,18 +350,24 @@
       btn.type = "button";
       const spectralCalibration = sample.id === "VCOE01_PHOT_AMMINE" && analysis === "SPECTRAL_LAB";
       const ionEnabled = sample.id === "VCOE01_ION_ALIQUOT" && analysis === "ION_FISHING";
-      const enabled = spectralCalibration || ionEnabled;
+      const gcEnabled = ["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id) &&
+        analysis === "GC_LAB" && !!state.runtimeSamples[sample.id];
+      const enabled = spectralCalibration || ionEnabled || gcEnabled;
       btn.className = "action-btn " + (enabled ? "" : "secondary");
       btn.disabled = !enabled;
       btn.textContent = spectralCalibration
         ? "Quantitative Photometrie öffnen"
         : ionEnabled
           ? "Ionenfischen öffnen"
-          : prettyAnalysis(analysis) + " · vorbereitet";
+          : gcEnabled
+            ? "GC-Lab öffnen"
+            : prettyAnalysis(analysis) + " · vorbereitet";
       if (spectralCalibration) {
         btn.addEventListener("click", function () { startSpectralLab(sample); });
       } else if (ionEnabled) {
         btn.addEventListener("click", function () { startIonFishing(sample); });
+      } else if (gcEnabled) {
+        btn.addEventListener("click", function () { startGcLab(sample); });
       }
       els.actions.appendChild(btn);
     });
@@ -385,7 +391,7 @@
         ? "Der akzeptierte Destillations-Run wurde übernommen. Die erzeugten Fraktionen tragen ihre tatsächlichen virtuellen Zusammensetzungen als Runtime-Daten weiter."
         : "Destilliere das unbekannte organische Filtrat. Bei 0–2 Sternen erhältst du Optimierungshinweise und kannst einen neuen Run starten; ab 3 Sternen dürfen die Fraktionen an den Hub übergeben werden.";
     } else if (["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id)) {
-      els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen und wird später an das GC-Lab übergeben.";
+      els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen. Entwickle im GC-Lab eine Methode mit Rₛ ≥ 1,5; nur ein ausreichend getrennter Lauf kann als offizielles Resultat zurückgegeben werden.";
     } else if (sample.id === "VCOE01_RESIDUE") {
       els.actionHint.textContent = "Im nichtflüchtigen Rückstand bleibt der organische Analyt zurück. Dieser Zweig wird später an das Titrationslabor angebunden.";
     } else {
@@ -525,6 +531,49 @@
     });
 
     const target = new URL("../DESTILLATIONSLABOR/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
+  function startGcLab(sample) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+
+    const runtime = state.runtimeSamples[sample.id];
+    if (!runtime || !Array.isArray(runtime.composition_internal)) {
+      alert("Für diese Fraktion fehlen Runtime-Daten aus der Destillation.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "GC_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "GC",
+      input: {
+        mode: "unknown_mixture",
+        display_label: sample.name_de,
+        hide_identity: true,
+        minimum_resolution: 1.5,
+        runtime_sample: {
+          sample_id: sample.id,
+          volume_ml: runtime.volume_ml,
+          composition_internal: runtime.composition_internal,
+          quality: runtime.quality || null
+        },
+        note: "Untersuche die unbekannte Destillationsfraktion. Optimiere Säule, Länge, Temperatur und Trägergasstrom. Stoffidentitäten bleiben verborgen; nur ein Lauf mit Rₛ ≥ 1,5 kann an den Hub zurückgegeben werden."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../GC_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
     window.location.href = target.toString();
@@ -715,7 +764,8 @@
       UVVIS_SPECTRUM: "UV/VIS-Spektrum",
       UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie",
       QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse",
-      FRACTIONAL_DISTILLATION: "Fraktionierende Destillation"
+      FRACTIONAL_DISTILLATION: "Fraktionierende Destillation",
+      GC: "Gaschromatographie"
     };
     return map[id] || id || "Analyse";
   }
