@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.6.0 – Destillation mit Runtime-Fraktionen  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.6.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.7.0 – GC-Analyse der Runtime-Fraktionen  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.7.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -159,3 +159,21 @@ Ein akzeptierter RESULT kann zusätzlich `produced_samples` enthalten. Diese Run
 Die Zusammensetzungen werden im SchülerInnen-Hub nicht angezeigt. Sie dienen als Eingabedaten für nachfolgende Laborstationen, insbesondere GC.
 
 Die für den ersten Test verwendete Startzusammensetzung der flüchtigen Komponenten ist weiterhin ein ausdrücklich markiertes Entwicklungsmodell und keine endgültige VCÖ-01-Rezeptur.
+
+
+## v0.7 – GC-LAB auf F1/F2/F3
+
+Die im akzeptierten Destillations-Run erzeugten Runtime-Samples können nun direkt an GC-LAB übergeben werden.
+
+Der Hub transportiert intern:
+
+- stabile SAMPLE-ID,
+- Fraktionsvolumen,
+- tatsächliche virtuelle Runtime-Zusammensetzung,
+- qualitative Fraktionsmetadaten.
+
+Im SchülerInnen-UI bleiben Stoffidentitäten und interne Zusammensetzung verborgen.
+
+GC-LAB liefert erst dann ein offizielles RESULT zurück, wenn alle relevanten benachbarten Peaks mindestens die Freigabeschwelle `R_s ≥ 1,5` erfüllen. Schlechtere Läufe bleiben ausschließlich in der GC-Versuchshistorie.
+
+Das GC-RESULT enthält öffentliche Messdaten (Retentionszeiten, Peakflächen, Peakbreiten, minimale Auflösung) sowie einen internen Peak→CORE-ID-Payload für die spätere Kopplung an das Strukturaufklärungs-Lab. Die Peaks bleiben im SchülerInnenbetrieb P1/P2/... und werden durch GC allein nicht identifiziert.
