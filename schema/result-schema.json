@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.6.0",
+  "schema_version": "0.7.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -61,7 +61,8 @@
   "optional_fields": [
     "evaluation",
     "student_interpretation",
-    "produced_samples"
+    "produced_samples",
+    "internal_payload"
   ],
   "produced_samples_contract": {
     "description_de": "Von Trennoperationen erzeugte Runtime-Samples. Die statische SAMPLE-ID bleibt stabil; Mess-/Zusammensetzungsdaten entstehen erst im konkreten Run.",
@@ -75,5 +76,6 @@
       "quality",
       "metadata"
     ]
-  }
+  },
+  "internal_payload_note_de": "Interner technischer Payload für die Kopplung nachfolgender Stationen; nicht als fachliche Lösung im SchülerInnen-UI anzeigen."
 }
