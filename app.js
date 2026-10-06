@@ -391,7 +391,7 @@
         ? "Der akzeptierte Destillations-Run wurde übernommen. Die erzeugten Fraktionen tragen ihre tatsächlichen virtuellen Zusammensetzungen als Runtime-Daten weiter."
         : "Destilliere das unbekannte organische Filtrat. Bei 0–2 Sternen erhältst du Optimierungshinweise und kannst einen neuen Run starten; ab 3 Sternen dürfen die Fraktionen an den Hub übergeben werden.";
     } else if (["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id)) {
-      els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen. Entwickle im GC-Lab eine Methode mit Rₛ ≥ 1,5; nur ein ausreichend getrennter Lauf kann als offizielles Resultat zurückgegeben werden.";
+      els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen. Im GC gilt: Ein einzelner sauberer Peak kann übernommen werden; bei mehreren Peaks müssen benachbarte Peaks mindestens Rₛ ≥ 1,5 erreichen.";
     } else if (sample.id === "VCOE01_RESIDUE") {
       els.actionHint.textContent = "Im nichtflüchtigen Rückstand bleibt der organische Analyt zurück. Dieser Zweig wird später an das Titrationslabor angebunden.";
     } else {
@@ -562,13 +562,14 @@
         display_label: sample.name_de,
         hide_identity: true,
         minimum_resolution: 1.5,
+        single_peak_allowed: true,
         runtime_sample: {
           sample_id: sample.id,
           volume_ml: runtime.volume_ml,
           composition_internal: runtime.composition_internal,
           quality: runtime.quality || null
         },
-        note: "Untersuche die unbekannte Destillationsfraktion. Optimiere Säule, Länge, Temperatur und Trägergasstrom. Stoffidentitäten bleiben verborgen; nur ein Lauf mit Rₛ ≥ 1,5 kann an den Hub zurückgegeben werden."
+        note: "Untersuche die unbekannte Destillationsfraktion. Optimiere Säule, Länge, Temperatur und Trägergasstrom. Stoffidentitäten bleiben verborgen. Ein einzelner sauberer Peak ist ein gültiges Ergebnis; bei mehreren Peaks ist für die Rückgabe Rₛ ≥ 1,5 erforderlich."
       },
       returnUrl: returnUrl.toString()
     });
