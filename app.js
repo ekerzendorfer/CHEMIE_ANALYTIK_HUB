@@ -747,7 +747,7 @@
           composition_internal: runtime.composition_internal,
           quality: runtime.quality || null
         },
-        spike_amount_model: 0.35,
+        verification_standard_ratio: 0.60,
         note: "Prüfe die bereits spektroskopisch gestützte Hypothese gezielt mit Referenzstandard und anschließender Aufstockung unter unveränderten GC-Bedingungen."
       },
       returnUrl: returnUrl.toString()
