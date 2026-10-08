@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.8.0 – GC-Peak → spektroskopische Strukturaufklärung  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.8.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.9.0 – vollständige GC-Identitätskette  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.9.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -195,3 +195,18 @@ Ablauf:
 
 Damit bleibt die Beweiskette fachlich getrennt:
 `GC-Trennung → spektroskopische Hypothese → chromatographische Bestätigung`.
+
+
+## v0.9 – gezielte GC-Bestätigung
+
+Nach einer spektroskopisch gestützten Strukturhypothese kann derselbe GC-Peak gezielt bestätigt werden.
+
+Ablauf:
+- der Hub bietet nur den bereits begründeten Stoff als Referenzstandard an
+- GC-LAB übernimmt exakt die Methode des ursprünglichen GC-Laufs
+- Referenzstandard: Retentionszeit muss mit dem Zielpeak übereinstimmen
+- Aufstockung: derselbe Peak muss wachsen, ohne dass ein neuer Peak entsteht
+- erst beide Belege zusammen liefern ein GC_CONFIRMATION-RESULT mit identity_status: confirmed
+- der ursprüngliche GC-Peak wird im Hub als bestätigt markiert
+
+Damit ist die organische Beweiskette geschlossen: GC-Trennung → M/MS/IR/¹H-NMR-Hypothese → gezielter Standard → Aufstockung → bestätigte Identität.
