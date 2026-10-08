@@ -1,6 +1,6 @@
 {
   "schema_name": "CHEMIE_ANALYTIK_CORE",
-  "schema_version": "0.7.0",
-  "data_version": "2026-10-06",
+  "schema_version": "0.8.0",
+  "data_version": "2026-10-08",
   "status": "draft"
 }

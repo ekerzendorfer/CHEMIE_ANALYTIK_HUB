@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.7.0";
+  const HUB_VERSION = "0.8.0";
 
   const els = {};
   let db = null;
@@ -207,12 +207,19 @@
       if (Array.isArray(result.produced_samples) && result.produced_samples.length) {
         applyProducedSamples(result);
       }
+      if (result.analysis_type === "STRUCTURE_ELUCIDATION") {
+        applyStructureHypothesis(result);
+      }
       const journalText = result.analysis_type === "QUALITATIVE_ION_ANALYSIS" && result.evaluation && result.evaluation.identified
         ? "Qualitative Ionenanalyse: " + formatIon(result.evaluation.identified.cation) + " und " + formatIon(result.evaluation.identified.anion) + " bestätigt."
         : result.analysis_type === "FRACTIONAL_DISTILLATION"
           ? "Destillation übernommen: F1, F2, F3 und Rückstand wurden als Proben erzeugt · Trennqualität " +
             String(result.evaluation && result.evaluation.quality_score || "–") + "/5."
-          : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
+          : result.analysis_type === "STRUCTURE_ELUCIDATION" && result.evaluation && result.evaluation.hypothesis
+            ? "Strukturhypothese " + String(result.peak_id || "Peak") + ": " +
+              String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
+              " · mit M/MS/IR/¹H-NMR vereinbar; GC-Bestätigung noch ausständig."
+            : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
       state.journal.push({
         ts: new Date().toISOString(),
         type: "result",
@@ -227,6 +234,33 @@
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete("resume");
     window.history.replaceState({}, "", cleanUrl.toString());
+  }
+
+  function applyStructureHypothesis(result) {
+    if (!result || !result.source_result_id || !result.peak_id) return;
+    const source = state.results.find(function (r) { return r.result_id === result.source_result_id; });
+    if (!source || source.analysis_type !== "GC") return;
+
+    if (!source.student_interpretation || typeof source.student_interpretation !== "object") {
+      source.student_interpretation = {};
+    }
+    const existing = source.student_interpretation[result.peak_id] || {};
+    const hypothesis = result.evaluation && result.evaluation.hypothesis || {};
+    source.student_interpretation[result.peak_id] = Object.assign({}, existing, {
+      identity_status: "supported",
+      hypothesis_substance_id: hypothesis.substance_id || null,
+      hypothesis_name_de: hypothesis.name_de || null,
+      structure_result_id: result.result_id
+    });
+  }
+
+  function structureResultForPeak(gcResultId, peakId) {
+    return state.results.find(function (r) {
+      return r.analysis_type === "STRUCTURE_ELUCIDATION" &&
+        r.source_result_id === gcResultId &&
+        r.peak_id === peakId &&
+        r.evaluation && r.evaluation.identity_status === "supported";
+    }) || null;
   }
 
   function render() {
@@ -580,6 +614,52 @@
     window.location.href = target.toString();
   }
 
+  function startStructureLab(sample, gcResult, peak) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+
+    const peakMap = gcResult && gcResult.internal_payload && gcResult.internal_payload.peak_map;
+    const targetSubstanceId = peakMap && peakMap[peak.peak_id];
+    if (!targetSubstanceId) {
+      alert("Für diesen Peak fehlt die interne Zuordnung für die Strukturaufklärung.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "STRUKTUR_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "STRUCTURE_ELUCIDATION",
+      sourceResultId: gcResult.result_id,
+      peakId: peak.peak_id,
+      input: {
+        mode: "gc_peak",
+        structure_mode: "basic",
+        target_substance_id: targetSubstanceId,
+        display_label: sample.name_de + " · " + peak.peak_id,
+        source_peak: {
+          peak_id: peak.peak_id,
+          retention_time_min: peak.retention_time_min,
+          area_percent: peak.area_percent,
+          width_min: peak.width_min
+        },
+        assignment_text: "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Nutze M, MS, IR und ¹H-NMR, formuliere eine begründete Strukturhypothese und ordne anschließend einen Stoffnamen zu."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../STRUKTUR_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startIonFishing(sample) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -676,33 +756,88 @@
 
   function renderResultGuidance(sample) {
     if (!els.resultGuidance) return;
-    const results = state.results
+
+    const gcResults = state.results.filter(function (r) {
+      return r.sample_id === sample.id && r.analysis_type === "GC" && r.status === "completed";
+    });
+
+    const otherResults = state.results
       .filter(function (r) { return r.sample_id === sample.id; })
       .filter(function (r) {
         const evaluation = r.evaluation || {};
         return (Array.isArray(evaluation.hints) && evaluation.hints.length) || evaluation.real_experiment;
       });
 
-    if (!results.length) {
+    let gcHtml = "";
+    if (gcResults.length) {
+      gcHtml = gcResults.map(function (gcResult) {
+        const peaks = gcResult.measurement && Array.isArray(gcResult.measurement.peaks) ? gcResult.measurement.peaks : [];
+        const peakRows = peaks.map(function (peak) {
+          const structureResult = structureResultForPeak(gcResult.result_id, peak.peak_id);
+          const interpretation = gcResult.student_interpretation && gcResult.student_interpretation[peak.peak_id] || {};
+          const rt = Number.isFinite(Number(peak.retention_time_min))
+            ? Number(peak.retention_time_min).toFixed(2).replace(".", ",") + " min" : "–";
+          const area = Number.isFinite(Number(peak.area_percent))
+            ? Number(peak.area_percent).toFixed(1).replace(".", ",") + " %" : "–";
+
+          const status = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis
+            ? '<span class="peak-status supported">Hypothese: ' +
+              escapeHtml(structureResult.evaluation.hypothesis.name_de || structureResult.evaluation.hypothesis.substance_id || "gestützt") +
+              '</span>'
+            : interpretation.identity_status === "supported"
+              ? '<span class="peak-status supported">spektroskopisch gestützt</span>'
+              : '<span class="peak-status">Identität offen</span>';
+
+          const button = structureResult
+            ? '<span class="peak-next">Nächster Beweisschritt: gezielter GC-Referenzstandard.</span>'
+            : '<button class="peak-structure-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+              '" data-peak-id="' + escapeHtml(peak.peak_id) + '">Im STRUKTUR-LAB untersuchen</button>';
+
+          return '<div class="gc-peak-row"><div><strong>' + escapeHtml(peak.peak_id) +
+            '</strong><span>tR ' + escapeHtml(rt) + ' · Fläche ' + escapeHtml(area) + '</span></div>' +
+            status + button + '</div>';
+        }).join("");
+
+        return '<div class="guidance-box gc-guidance"><strong>GC-Peaks weiter untersuchen</strong>' +
+          '<p>Die GC trennt Komponenten, identifiziert sie aber noch nicht. Wähle einen Peak für die spektroskopische Strukturaufklärung.</p>' +
+          '<div class="gc-peak-list">' + peakRows + '</div></div>';
+      }).join("");
+    }
+
+    let otherHtml = "";
+    if (otherResults.length) {
+      const latest = otherResults[otherResults.length - 1];
+      const evaluation = latest.evaluation || {};
+      const hints = Array.isArray(evaluation.hints) ? evaluation.hints : [];
+      const hintHtml = hints.length
+        ? '<div class="guidance-box"><strong>Auswertungshinweise</strong><p>Die App hat nur Messdaten übernommen. Die fachliche Auswertung bleibt Teil deiner Arbeit.</p><ol>' +
+          hints.map(function (hint) { return "<li>" + escapeHtml(hint) + "</li>"; }).join("") +
+          "</ol></div>"
+        : "";
+      const realHtml = evaluation.real_experiment
+        ? '<div class="guidance-box real-experiment"><strong>Optionaler Realversuch</strong><p>' + escapeHtml(evaluation.real_experiment) + "</p></div>"
+        : "";
+      otherHtml = hintHtml + realHtml;
+    }
+
+    const html = gcHtml + otherHtml;
+    if (!html) {
       els.resultGuidance.innerHTML = "";
       els.resultGuidance.hidden = true;
       return;
     }
 
-    const latest = results[results.length - 1];
-    const evaluation = latest.evaluation || {};
-    const hints = Array.isArray(evaluation.hints) ? evaluation.hints : [];
-    const hintHtml = hints.length
-      ? '<div class="guidance-box"><strong>Auswertungshinweise</strong><p>Die App hat nur Messdaten übernommen. Die fachliche Auswertung bleibt Teil deiner Arbeit.</p><ol>' +
-        hints.map(function (hint) { return "<li>" + escapeHtml(hint) + "</li>"; }).join("") +
-        "</ol></div>"
-      : "";
-    const realHtml = evaluation.real_experiment
-      ? '<div class="guidance-box real-experiment"><strong>Optionaler Realversuch</strong><p>' + escapeHtml(evaluation.real_experiment) + "</p></div>"
-      : "";
-
     els.resultGuidance.hidden = false;
-    els.resultGuidance.innerHTML = hintHtml + realHtml;
+    els.resultGuidance.innerHTML = html;
+    els.resultGuidance.querySelectorAll(".peak-structure-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const gcResult = state.results.find(function (r) { return r.result_id === btn.dataset.gcResult; });
+        const peak = gcResult && gcResult.measurement && Array.isArray(gcResult.measurement.peaks)
+          ? gcResult.measurement.peaks.find(function (p) { return p.peak_id === btn.dataset.peakId; })
+          : null;
+        if (gcResult && peak) startStructureLab(sample, gcResult, peak);
+      });
+    });
   }
 
   function operationAlreadyDone(sampleId, operationId) {
@@ -766,7 +901,9 @@
       UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie",
       QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse",
       FRACTIONAL_DISTILLATION: "Fraktionierende Destillation",
-      GC: "Gaschromatographie"
+      GC: "Gaschromatographie",
+      STRUCTURE_ELUCIDATION: "Strukturaufklärung",
+      STRUKTUR_LAB: "Struktur-Lab"
     };
     return map[id] || id || "Analyse";
   }
