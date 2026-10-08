@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.8.0";
+  const HUB_VERSION = "0.9.0";
 
   const els = {};
   let db = null;
@@ -210,6 +210,9 @@
       if (result.analysis_type === "STRUCTURE_ELUCIDATION") {
         applyStructureHypothesis(result);
       }
+      if (result.analysis_type === "GC_CONFIRMATION") {
+        applyGcConfirmation(result);
+      }
       const journalText = result.analysis_type === "QUALITATIVE_ION_ANALYSIS" && result.evaluation && result.evaluation.identified
         ? "Qualitative Ionenanalyse: " + formatIon(result.evaluation.identified.cation) + " und " + formatIon(result.evaluation.identified.anion) + " bestätigt."
         : result.analysis_type === "FRACTIONAL_DISTILLATION"
@@ -219,7 +222,11 @@
             ? "Strukturhypothese " + String(result.peak_id || "Peak") + ": " +
               String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
               " · mit M/MS/IR/¹H-NMR vereinbar; GC-Bestätigung noch ausständig."
-            : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
+            : result.analysis_type === "GC_CONFIRMATION" && result.evaluation
+              ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
+                String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
+                " · Referenzstandard und Aufstockung stimmen überein."
+              : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
       state.journal.push({
         ts: new Date().toISOString(),
         type: "result",
@@ -262,6 +269,33 @@
         r.evaluation && r.evaluation.identity_status === "supported";
     }) || null;
   }
+
+  function applyGcConfirmation(result) {
+    if (!result || !result.source_result_id || !result.peak_id) return;
+    const source = state.results.find(function (r) { return r.result_id === result.source_result_id; });
+    if (!source || source.analysis_type !== "GC") return;
+
+    if (!source.student_interpretation || typeof source.student_interpretation !== "object") {
+      source.student_interpretation = {};
+    }
+    const existing = source.student_interpretation[result.peak_id] || {};
+    source.student_interpretation[result.peak_id] = Object.assign({}, existing, {
+      identity_status: "confirmed",
+      confirmed_substance_id: result.evaluation && result.evaluation.confirmed_substance_id || existing.hypothesis_substance_id || null,
+      confirmed_name_de: result.evaluation && result.evaluation.confirmed_name_de || existing.hypothesis_name_de || null,
+      confirmation_result_id: result.result_id
+    });
+  }
+
+  function gcConfirmationResultForPeak(gcResultId, peakId) {
+    return state.results.find(function (r) {
+      return r.analysis_type === "GC_CONFIRMATION" &&
+        r.source_result_id === gcResultId &&
+        r.peak_id === peakId &&
+        r.evaluation && r.evaluation.identity_status === "confirmed";
+    }) || null;
+  }
+
 
   function render() {
     els.schemaBadge.textContent = "CORE " + db.schemaVersion + " · Bridge " + (window.AnalytikBridge ? window.AnalytikBridge.version : "–");
@@ -660,6 +694,71 @@
     window.location.href = target.toString();
   }
 
+  function startGcConfirmation(sample, gcResult, peak, structureResult) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+    const runtime = state.runtimeSamples[sample.id];
+    if (!runtime || !Array.isArray(runtime.composition_internal)) {
+      alert("Für diese Fraktion fehlen Runtime-Daten aus der Destillation.");
+      return;
+    }
+    const hypothesis = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis;
+    if (!hypothesis || !hypothesis.substance_id) {
+      alert("Für diesen Peak fehlt eine spektroskopisch gestützte Strukturhypothese.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const m = gcResult.measurement || {};
+    const run = window.AnalytikBridge.startRun({
+      appId: "GC_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "GC_CONFIRMATION",
+      sourceResultId: gcResult.result_id,
+      peakId: peak.peak_id,
+      input: {
+        mode: "targeted_confirmation",
+        source_result_id: gcResult.result_id,
+        structure_result_id: structureResult.result_id,
+        hypothesis_substance_id: hypothesis.substance_id,
+        hypothesis_name_de: hypothesis.name_de || hypothesis.substance_id,
+        display_label: sample.name_de + " · " + peak.peak_id,
+        source_peak: {
+          peak_id: peak.peak_id,
+          retention_time_min: peak.retention_time_min,
+          area_percent: peak.area_percent,
+          width_min: peak.width_min
+        },
+        source_gc_method: {
+          column_id: m.column,
+          length_m: m.column_length_m,
+          temperature_c: m.temperature_c,
+          flow_ml_min: m.flow_ml_min
+        },
+        runtime_sample: {
+          sample_id: sample.id,
+          volume_ml: runtime.volume_ml,
+          composition_internal: runtime.composition_internal,
+          quality: runtime.quality || null
+        },
+        verification_standard_ratio: 0.60,
+        note: "Prüfe die bereits spektroskopisch gestützte Hypothese gezielt mit Referenzstandard und anschließender Aufstockung unter unveränderten GC-Bedingungen."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../GC_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startIonFishing(sample) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -780,18 +879,28 @@
           const area = Number.isFinite(Number(peak.area_percent))
             ? Number(peak.area_percent).toFixed(1).replace(".", ",") + " %" : "–";
 
-          const status = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis
-            ? '<span class="peak-status supported">Hypothese: ' +
-              escapeHtml(structureResult.evaluation.hypothesis.name_de || structureResult.evaluation.hypothesis.substance_id || "gestützt") +
-              '</span>'
-            : interpretation.identity_status === "supported"
-              ? '<span class="peak-status supported">spektroskopisch gestützt</span>'
-              : '<span class="peak-status">Identität offen</span>';
+          const confirmationResult = gcConfirmationResultForPeak(gcResult.result_id, peak.peak_id);
 
-          const button = structureResult
-            ? '<span class="peak-next">Nächster Beweisschritt: gezielter GC-Referenzstandard.</span>'
-            : '<button class="peak-structure-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
-              '" data-peak-id="' + escapeHtml(peak.peak_id) + '">Im STRUKTUR-LAB untersuchen</button>';
+          const status = confirmationResult && confirmationResult.evaluation
+            ? '<span class="peak-status confirmed">Bestätigt: ' +
+              escapeHtml(confirmationResult.evaluation.confirmed_name_de || confirmationResult.evaluation.confirmed_substance_id || "Identität") +
+              '</span>'
+            : structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis
+              ? '<span class="peak-status supported">Hypothese: ' +
+                escapeHtml(structureResult.evaluation.hypothesis.name_de || structureResult.evaluation.hypothesis.substance_id || "gestützt") +
+                '</span>'
+              : interpretation.identity_status === "supported"
+                ? '<span class="peak-status supported">spektroskopisch gestützt</span>'
+                : '<span class="peak-status">Identität offen</span>';
+
+          const button = confirmationResult
+            ? '<span class="peak-next confirmed-text">Beweiskette abgeschlossen: Spektroskopie + Referenzstandard + Aufstockung.</span>'
+            : structureResult
+              ? '<button class="peak-confirm-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+                '" data-peak-id="' + escapeHtml(peak.peak_id) + '" data-structure-result="' + escapeHtml(structureResult.result_id) +
+                '">Mit Standard & Aufstockung bestätigen</button>'
+              : '<button class="peak-structure-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+                '" data-peak-id="' + escapeHtml(peak.peak_id) + '">Im STRUKTUR-LAB untersuchen</button>';
 
           return '<div class="gc-peak-row"><div><strong>' + escapeHtml(peak.peak_id) +
             '</strong><span>tR ' + escapeHtml(rt) + ' · Fläche ' + escapeHtml(area) + '</span></div>' +
@@ -836,6 +945,16 @@
           ? gcResult.measurement.peaks.find(function (p) { return p.peak_id === btn.dataset.peakId; })
           : null;
         if (gcResult && peak) startStructureLab(sample, gcResult, peak);
+      });
+    });
+    els.resultGuidance.querySelectorAll(".peak-confirm-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const gcResult = state.results.find(function (r) { return r.result_id === btn.dataset.gcResult; });
+        const structureResult = state.results.find(function (r) { return r.result_id === btn.dataset.structureResult; });
+        const peak = gcResult && gcResult.measurement && Array.isArray(gcResult.measurement.peaks)
+          ? gcResult.measurement.peaks.find(function (p) { return p.peak_id === btn.dataset.peakId; })
+          : null;
+        if (gcResult && peak && structureResult) startGcConfirmation(sample, gcResult, peak, structureResult);
       });
     });
   }
@@ -903,6 +1022,7 @@
       FRACTIONAL_DISTILLATION: "Fraktionierende Destillation",
       GC: "Gaschromatographie",
       STRUCTURE_ELUCIDATION: "Strukturaufklärung",
+      GC_CONFIRMATION: "GC-Identitätsbestätigung",
       STRUKTUR_LAB: "Struktur-Lab"
     };
     return map[id] || id || "Analyse";

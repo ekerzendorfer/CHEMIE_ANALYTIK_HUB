@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.8.0",
+  "schema_version": "0.9.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -80,5 +80,5 @@
     ]
   },
   "internal_payload_note_de": "Interner technischer Payload für die Kopplung nachfolgender Stationen; nicht als fachliche Lösung im SchülerInnen-UI anzeigen.",
-  "linked_result_note_de": "source_result_id + peak_id referenzieren bei nachgeschalteter Strukturaufklärung einen konkreten Peak eines vorgelagerten GC-RESULTs."
+  "linked_result_note_de": "source_result_id + peak_id referenzieren nachgeschaltete Strukturaufklärung und chromatographische Identitätsbestätigung eines konkreten GC-Peaks."
 }
