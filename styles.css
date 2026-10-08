@@ -104,3 +104,15 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 
 .guidance-box.real-experiment{border-color:#d7c18a;background:#fff9e9}
 .guidance-box.real-experiment strong{color:#7c5a13}
+
+
+/* v0.8 · GC-Peak → STRUKTUR-LAB */
+.gc-guidance{border-color:#b5cfdb;background:#f3f8fb}
+.gc-peak-list{display:grid;gap:8px;margin-top:10px}
+.gc-peak-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(120px,.8fr) minmax(180px,1.2fr);gap:10px;align-items:center;padding:10px;border:1px solid #d6e3e9;border-radius:10px;background:#fff}
+.gc-peak-row>div:first-child{display:grid;gap:2px}.gc-peak-row>div:first-child span{font-size:.8rem;color:var(--muted)}
+.peak-status{justify-self:start;border-radius:999px;padding:5px 8px;background:#eef2f4;color:#56656e;font-size:.78rem;font-weight:800}
+.peak-status.supported{background:var(--ok-soft);color:var(--ok)}
+.peak-structure-btn{border:0;border-radius:9px;padding:9px 10px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer}
+.peak-next{font-size:.82rem;color:var(--muted);line-height:1.35}
+@media(max-width:700px){.gc-peak-row{grid-template-columns:1fr}}
