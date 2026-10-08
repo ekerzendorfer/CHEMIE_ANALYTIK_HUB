@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.7.0 – GC-Analyse der Runtime-Fraktionen  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.7.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.8.0 – GC-Peak → spektroskopische Strukturaufklärung  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.8.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -177,3 +177,21 @@ Im SchülerInnen-UI bleiben Stoffidentitäten und interne Zusammensetzung verbor
 GC-LAB liefert erst dann ein offizielles RESULT zurück, wenn alle relevanten benachbarten Peaks mindestens die Freigabeschwelle `R_s ≥ 1,5` erfüllen. Schlechtere Läufe bleiben ausschließlich in der GC-Versuchshistorie.
 
 Das GC-RESULT enthält öffentliche Messdaten (Retentionszeiten, Peakflächen, Peakbreiten, minimale Auflösung) sowie einen internen Peak→CORE-ID-Payload für die spätere Kopplung an das Strukturaufklärungs-Lab. Die Peaks bleiben im SchülerInnenbetrieb P1/P2/... und werden durch GC allein nicht identifiziert.
+
+
+## v0.8 – GC-Peak → STRUKTUR-LAB
+
+Ein übernommenes GC-RESULT kann nun für jeden detektierten Peak eine nachgeschaltete Strukturaufklärung starten.
+
+Ablauf:
+- Hub zeigt P1/P2/... mit Retentionszeit und Peakflächenanteil
+- Peak wird mit `source_result_id + peak_id` referenziert
+- die interne Peak→CORE-ID-Zuordnung aus dem GC-RESULT bleibt im SchülerInnen-UI verborgen
+- STRUKTUR-LAB startet im Basismodus mit dem passenden kuratierten Fall
+- M → MS → IR → ¹H-NMR → Stoffklasse → Strukturhypothese → Name
+- Rückgabe erhält `identity_status: supported`
+- der ursprüngliche GC-Peak wird im Hub als spektroskopisch gestützt markiert
+- `confirmed` bleibt ausdrücklich dem späteren gezielten GC-Referenzstandard bzw. der Aufstockung vorbehalten
+
+Damit bleibt die Beweiskette fachlich getrennt:
+`GC-Trennung → spektroskopische Hypothese → chromatographische Bestätigung`.
