@@ -1,6 +1,6 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.9.0 – vollständige GC-Identitätskette  
+**Version:** v0.9.1 – Mischproben-Sperre und Standardtransfer  
 **Basis:** CHEMIE_ANALYTIK_CORE schema v0.9.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
@@ -210,3 +210,20 @@ Ablauf:
 - der ursprüngliche GC-Peak wird im Hub als bestätigt markiert
 
 Damit ist die organische Beweiskette geschlossen: GC-Trennung → M/MS/IR/¹H-NMR-Hypothese → gezielter Standard → Aufstockung → bestätigte Identität.
+
+
+## v0.9.1 – Mischproben-Sperre und Standardtransfer
+
+Direkte Reinstoff-Spektroskopie wird nur noch für ausreichend reine GC-Fraktionen freigegeben.
+
+Didaktische Freigaberegel:
+- ein einzelner Peak: Strukturaufklärung möglich
+- bei mehreren Peaks: nur der dominante Peak, wenn er mindestens 95 % Peakflächenanteil besitzt
+- deutliche Mischfraktionen: keine direkte Übergabe an STRUKTUR-LAB, da MS/IR/¹H-NMR der Gesamtprobe Mischspektren liefern würden
+
+Mischfraktionen bleiben analytisch wertvoll:
+- Stoffe, die zuvor in einer anderen ausreichend reinen Fraktion vollständig bestätigt wurden, werden als bekannte Standards freigeschaltet
+- der jeweilige Standard kann unter der Methode der Mischfraktion erneut gemessen und zur Probe aufgestockt werden
+- so lassen sich beide Komponenten einer Übergangsfraktion chromatographisch bestätigen, ohne eine unrealistische Reinstoff-Spektroskopie der Mischung vorzutäuschen
+
+Die 95-%-Grenze ist eine didaktische Freigaberegel. Peakflächen-% im vereinfachten FID-Modell sind keine exakten Stoffmengen-%.
