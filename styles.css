@@ -116,3 +116,7 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .peak-structure-btn{border:0;border-radius:9px;padding:9px 10px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer}
 .peak-next{font-size:.82rem;color:var(--muted);line-height:1.35}
 @media(max-width:700px){.gc-peak-row{grid-template-columns:1fr}}
+
+.peak-status.confirmed{background:#dff4e8;color:#155f3b}
+.peak-confirm-btn{border:0;border-radius:9px;padding:9px 10px;background:#8a5b18;color:#fff;font-weight:800;cursor:pointer}
+.confirmed-text{color:#1f6b45;font-weight:700}
