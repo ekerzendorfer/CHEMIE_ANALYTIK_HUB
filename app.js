@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.9.0";
+  const HUB_VERSION = "0.9.1";
 
   const els = {};
   let db = null;
@@ -295,6 +295,55 @@
         r.evaluation && r.evaluation.identity_status === "confirmed";
     }) || null;
   }
+
+  const STRUCTURE_PURITY_THRESHOLD_PERCENT = 95;
+
+  function gcPurityProfile(gcResult) {
+    const peaks = gcResult && gcResult.measurement && Array.isArray(gcResult.measurement.peaks)
+      ? gcResult.measurement.peaks : [];
+    if (!peaks.length) return { pureEnough: false, dominantPeakId: null, dominantArea: 0, peakCount: 0 };
+    const sorted = peaks.slice().sort(function (a, b) {
+      return Number(b.area_percent || 0) - Number(a.area_percent || 0);
+    });
+    const dominant = sorted[0];
+    const dominantArea = Number(dominant.area_percent || 0);
+    return {
+      pureEnough: peaks.length === 1 || dominantArea >= STRUCTURE_PURITY_THRESHOLD_PERCENT,
+      dominantPeakId: dominant.peak_id,
+      dominantArea: dominantArea,
+      peakCount: peaks.length
+    };
+  }
+
+  function structureAllowedForPeak(gcResult, peak) {
+    const p = gcPurityProfile(gcResult);
+    return p.pureEnough && p.dominantPeakId === peak.peak_id;
+  }
+
+  function confirmedIdentityForSubstance(substanceId, excludeSourceResultId) {
+    if (!substanceId) return null;
+    const matches = state.results.filter(function (r) {
+      return r.analysis_type === "GC_CONFIRMATION" &&
+        r.evaluation && r.evaluation.identity_status === "confirmed" &&
+        r.evaluation.confirmed_substance_id === substanceId &&
+        (!excludeSourceResultId || r.source_result_id !== excludeSourceResultId);
+    });
+    return matches.length ? matches[matches.length - 1] : null;
+  }
+
+  function knownConfirmedStandardForPeak(gcResult, peak) {
+    const peakMap = gcResult && gcResult.internal_payload && gcResult.internal_payload.peak_map;
+    const substanceId = peakMap && peakMap[peak.peak_id];
+    if (!substanceId) return null;
+    const confirmation = confirmedIdentityForSubstance(substanceId, gcResult.result_id);
+    if (!confirmation) return null;
+    return {
+      substance_id: substanceId,
+      name_de: confirmation.evaluation.confirmed_name_de || substanceId,
+      source_confirmation_result_id: confirmation.result_id
+    };
+  }
+
 
 
   function render() {
@@ -694,7 +743,7 @@
     window.location.href = target.toString();
   }
 
-  function startGcConfirmation(sample, gcResult, peak, structureResult) {
+  function startGcConfirmation(sample, gcResult, peak, structureResult, knownStandard) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
       return;
@@ -704,9 +753,13 @@
       alert("Für diese Fraktion fehlen Runtime-Daten aus der Destillation.");
       return;
     }
-    const hypothesis = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis;
+    const structureHypothesis = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis;
+    const hypothesis = structureHypothesis || (knownStandard ? {
+      substance_id: knownStandard.substance_id,
+      name_de: knownStandard.name_de
+    } : null);
     if (!hypothesis || !hypothesis.substance_id) {
-      alert("Für diesen Peak fehlt eine spektroskopisch gestützte Strukturhypothese.");
+      alert("Für diesen Peak fehlt eine unabhängig begründete Stoffidentität.");
       return;
     }
 
@@ -725,7 +778,8 @@
       input: {
         mode: "targeted_confirmation",
         source_result_id: gcResult.result_id,
-        structure_result_id: structureResult.result_id,
+        structure_result_id: structureResult ? structureResult.result_id : null,
+        known_identity_source_result_id: knownStandard ? knownStandard.source_confirmation_result_id : null,
         hypothesis_substance_id: hypothesis.substance_id,
         hypothesis_name_de: hypothesis.name_de || hypothesis.substance_id,
         display_label: sample.name_de + " · " + peak.peak_id,
@@ -748,7 +802,9 @@
           quality: runtime.quality || null
         },
         verification_standard_ratio: 0.60,
-        note: "Prüfe die bereits spektroskopisch gestützte Hypothese gezielt mit Referenzstandard und anschließender Aufstockung unter unveränderten GC-Bedingungen."
+        note: structureResult
+          ? "Prüfe die bereits spektroskopisch gestützte Hypothese gezielt mit Referenzstandard und anschließender Aufstockung unter unveränderten GC-Bedingungen."
+          : "Prüfe die in einer anderen, ausreichend reinen Fraktion bereits bestätigte Identität jetzt gezielt in dieser Mischfraktion mit Referenzstandard und Aufstockung."
       },
       returnUrl: returnUrl.toString()
     });
@@ -871,6 +927,8 @@
     if (gcResults.length) {
       gcHtml = gcResults.map(function (gcResult) {
         const peaks = gcResult.measurement && Array.isArray(gcResult.measurement.peaks) ? gcResult.measurement.peaks : [];
+        const purity = gcPurityProfile(gcResult);
+
         const peakRows = peaks.map(function (peak) {
           const structureResult = structureResultForPeak(gcResult.result_id, peak.peak_id);
           const interpretation = gcResult.student_interpretation && gcResult.student_interpretation[peak.peak_id] || {};
@@ -878,8 +936,9 @@
             ? Number(peak.retention_time_min).toFixed(2).replace(".", ",") + " min" : "–";
           const area = Number.isFinite(Number(peak.area_percent))
             ? Number(peak.area_percent).toFixed(1).replace(".", ",") + " %" : "–";
-
           const confirmationResult = gcConfirmationResultForPeak(gcResult.result_id, peak.peak_id);
+          const knownStandard = knownConfirmedStandardForPeak(gcResult, peak);
+          const structureAllowed = structureAllowedForPeak(gcResult, peak);
 
           const status = confirmationResult && confirmationResult.evaluation
             ? '<span class="peak-status confirmed">Bestätigt: ' +
@@ -889,27 +948,43 @@
               ? '<span class="peak-status supported">Hypothese: ' +
                 escapeHtml(structureResult.evaluation.hypothesis.name_de || structureResult.evaluation.hypothesis.substance_id || "gestützt") +
                 '</span>'
-              : interpretation.identity_status === "supported"
-                ? '<span class="peak-status supported">spektroskopisch gestützt</span>'
-                : '<span class="peak-status">Identität offen</span>';
+              : knownStandard
+                ? '<span class="peak-status known">Standard verfügbar: ' + escapeHtml(knownStandard.name_de) + '</span>'
+                : interpretation.identity_status === "supported"
+                  ? '<span class="peak-status supported">spektroskopisch gestützt</span>'
+                  : '<span class="peak-status">Identität offen</span>';
 
-          const button = confirmationResult
-            ? '<span class="peak-next confirmed-text">Beweiskette abgeschlossen: Spektroskopie + Referenzstandard + Aufstockung.</span>'
-            : structureResult
-              ? '<button class="peak-confirm-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
-                '" data-peak-id="' + escapeHtml(peak.peak_id) + '" data-structure-result="' + escapeHtml(structureResult.result_id) +
-                '">Mit Standard & Aufstockung bestätigen</button>'
-              : '<button class="peak-structure-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
-                '" data-peak-id="' + escapeHtml(peak.peak_id) + '">Im STRUKTUR-LAB untersuchen</button>';
+          let button;
+          if (confirmationResult) {
+            button = '<span class="peak-next confirmed-text">Beweiskette abgeschlossen: Referenzstandard + Aufstockung bestätigt.</span>';
+          } else if (structureResult) {
+            button = '<button class="peak-confirm-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+              '" data-peak-id="' + escapeHtml(peak.peak_id) + '" data-structure-result="' + escapeHtml(structureResult.result_id) +
+              '">Mit Standard & Aufstockung bestätigen</button>';
+          } else if (structureAllowed) {
+            button = '<button class="peak-structure-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+              '" data-peak-id="' + escapeHtml(peak.peak_id) + '">Im STRUKTUR-LAB untersuchen</button>';
+          } else if (knownStandard) {
+            button = '<button class="peak-known-confirm-btn" type="button" data-gc-result="' + escapeHtml(gcResult.result_id) +
+              '" data-peak-id="' + escapeHtml(peak.peak_id) + '" data-substance-id="' + escapeHtml(knownStandard.substance_id) +
+              '" data-substance-name="' + escapeHtml(knownStandard.name_de) +
+              '" data-known-result="' + escapeHtml(knownStandard.source_confirmation_result_id) +
+              '">Mit bestätigtem Standard prüfen</button>';
+          } else {
+            button = '<span class="peak-next mixture-locked">Keine Reinstoff-Spektroskopie: Standard wird erst nach unabhängiger Identifikation in einer ausreichend reinen Fraktion freigeschaltet.</span>';
+          }
 
           return '<div class="gc-peak-row"><div><strong>' + escapeHtml(peak.peak_id) +
             '</strong><span>tR ' + escapeHtml(rt) + ' · Fläche ' + escapeHtml(area) + '</span></div>' +
             status + button + '</div>';
         }).join("");
 
+        const intro = purity.pureEnough
+          ? '<p>Diese Fraktion ist für die direkte Strukturaufklärung des dominanten Peaks ausreichend rein. Kleinere Nebenpeaks werden nicht separat in das Reinstoff-Spektroskopie-Lab geschickt.</p>'
+          : '<div class="mixture-warning"><strong>Mischprobe erkannt – Reinstoff-Spektroskopie gesperrt</strong><p>Mehrere relevante GC-Komponenten sind vorhanden. Ein direktes MS-/IR-/¹H-NMR-Spektrum dieser Gesamtprobe wäre ein Mischspektrum und daher für unsere Reinstoff-Strukturaufklärung ungeeignet. Bereits unabhängig bestätigte Standards können hier jedoch chromatographisch geprüft und aufgestockt werden.</p></div>';
+
         return '<div class="guidance-box gc-guidance"><strong>GC-Peaks weiter untersuchen</strong>' +
-          '<p>Die GC trennt Komponenten, identifiziert sie aber noch nicht. Wähle einen Peak für die spektroskopische Strukturaufklärung.</p>' +
-          '<div class="gc-peak-list">' + peakRows + '</div></div>';
+          intro + '<div class="gc-peak-list">' + peakRows + '</div></div>';
       }).join("");
     }
 
@@ -938,6 +1013,7 @@
 
     els.resultGuidance.hidden = false;
     els.resultGuidance.innerHTML = html;
+
     els.resultGuidance.querySelectorAll(".peak-structure-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const gcResult = state.results.find(function (r) { return r.result_id === btn.dataset.gcResult; });
@@ -947,6 +1023,7 @@
         if (gcResult && peak) startStructureLab(sample, gcResult, peak);
       });
     });
+
     els.resultGuidance.querySelectorAll(".peak-confirm-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const gcResult = state.results.find(function (r) { return r.result_id === btn.dataset.gcResult; });
@@ -954,7 +1031,22 @@
         const peak = gcResult && gcResult.measurement && Array.isArray(gcResult.measurement.peaks)
           ? gcResult.measurement.peaks.find(function (p) { return p.peak_id === btn.dataset.peakId; })
           : null;
-        if (gcResult && peak && structureResult) startGcConfirmation(sample, gcResult, peak, structureResult);
+        if (gcResult && peak && structureResult) startGcConfirmation(sample, gcResult, peak, structureResult, null);
+      });
+    });
+
+    els.resultGuidance.querySelectorAll(".peak-known-confirm-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const gcResult = state.results.find(function (r) { return r.result_id === btn.dataset.gcResult; });
+        const peak = gcResult && gcResult.measurement && Array.isArray(gcResult.measurement.peaks)
+          ? gcResult.measurement.peaks.find(function (p) { return p.peak_id === btn.dataset.peakId; })
+          : null;
+        const knownStandard = {
+          substance_id: btn.dataset.substanceId,
+          name_de: btn.dataset.substanceName,
+          source_confirmation_result_id: btn.dataset.knownResult
+        };
+        if (gcResult && peak) startGcConfirmation(sample, gcResult, peak, null, knownStandard);
       });
     });
   }
