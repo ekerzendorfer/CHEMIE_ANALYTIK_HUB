@@ -930,7 +930,9 @@
         const purity = gcPurityProfile(gcResult);
 
         const peakRows = peaks.map(function (peak) {
-          const structureResult = structureResultForPeak(gcResult.result_id, peak.peak_id);
+          const rawStructureResult = structureResultForPeak(gcResult.result_id, peak.peak_id);
+          const structureAllowed = structureAllowedForPeak(gcResult, peak);
+          const structureResult = structureAllowed ? rawStructureResult : null;
           const interpretation = gcResult.student_interpretation && gcResult.student_interpretation[peak.peak_id] || {};
           const rt = Number.isFinite(Number(peak.retention_time_min))
             ? Number(peak.retention_time_min).toFixed(2).replace(".", ",") + " min" : "–";
@@ -938,7 +940,6 @@
             ? Number(peak.area_percent).toFixed(1).replace(".", ",") + " %" : "–";
           const confirmationResult = gcConfirmationResultForPeak(gcResult.result_id, peak.peak_id);
           const knownStandard = knownConfirmedStandardForPeak(gcResult, peak);
-          const structureAllowed = structureAllowedForPeak(gcResult, peak);
 
           const status = confirmationResult && confirmationResult.evaluation
             ? '<span class="peak-status confirmed">Bestätigt: ' +
