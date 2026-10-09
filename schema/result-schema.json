@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.12.0",
+  "schema_version": "0.13.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -80,7 +80,7 @@
     ]
   },
   "internal_payload_note_de": "Interner technischer Payload für die Kopplung nachfolgender Stationen; nicht als fachliche Lösung im SchülerInnen-UI anzeigen.",
-  "linked_result_note_de": "source_result_id verknüpft nachgeschaltete Evidenz mit ihrem fachlichen Ursprung. MELTING_POINT_CONFIRMATION verweist auf das STRUCTURE_ELUCIDATION-RESULT des Feststoffs.",
+  "linked_result_note_de": "source_result_id verknüpft nachgeschaltete Evidenz mit ihrem fachlichen Ursprung. ACID_BASE_TITRATION_QUANT verweist beim VCÖ-01-Rückstand auf das bestätigende MELTING_POINT_CONFIRMATION-RESULT.",
   "organic_solid_screening_contract": {
     "analysis_type": "ORGANIC_SOLID_SCREENING",
     "purpose_de": "Klassische Voranalyse eines unbekannten organischen Feststoffs ohne Stoffidentifikation.",
@@ -108,5 +108,30 @@
       "evidence"
     ],
     "confirmation_rule_de": "Bestätigung erst nach übereinstimmendem Referenzschmelzbereich und fehlender relevanter Depression oder Verbreiterung des Mischschmelzpunkts."
+  },
+  "quantitative_titration_contract": {
+    "analysis_type": "ACID_BASE_TITRATION_QUANT",
+    "measurement_fields": [
+      "equivalence_volume_ml",
+      "titrant_concentration_mol_l",
+      "aliquot_volume_ml",
+      "stock_volume_ml",
+      "raw_points"
+    ],
+    "student_calculation_fields": [
+      "n_titrant_mmol",
+      "stoichiometric_ratio",
+      "n_analyte_aliquot_mmol",
+      "analyte_concentration_mol_l",
+      "n_analyte_total_mmol",
+      "analyte_mass_g"
+    ],
+    "evaluation_fields": [
+      "quantification_status",
+      "substance_id",
+      "substance_name_de",
+      "analyte_mass_g"
+    ],
+    "note_de": "Die quantitative Auswertung wird erst nach vollständiger SchülerInnenrechnung als RESULT an den Hub zurückgegeben."
   }
 }
