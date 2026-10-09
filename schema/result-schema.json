@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.10.0",
+  "schema_version": "0.11.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -80,7 +80,7 @@
     ]
   },
   "internal_payload_note_de": "Interner technischer Payload für die Kopplung nachfolgender Stationen; nicht als fachliche Lösung im SchülerInnen-UI anzeigen.",
-  "linked_result_note_de": "source_result_id + peak_id referenzieren nachgeschaltete GC-Peak-Arbeit. ORGANIC_SOLID_SCREENING liefert ausschließlich Beobachtungen und allgemeine supported_features; eine Stoffidentität darf dabei nicht vergeben werden.",
+  "linked_result_note_de": "source_result_id referenziert den fachlichen Ursprung eines nachgeschalteten RESULTs. Bei GC-Peaks ergänzt peak_id die Verknüpfung; bei Feststoff-Strukturaufklärung verweist source_result_id auf das ORGANIC_SOLID_SCREENING-RESULT.",
   "organic_solid_screening_contract": {
     "analysis_type": "ORGANIC_SOLID_SCREENING",
     "purpose_de": "Klassische Voranalyse eines unbekannten organischen Feststoffs ohne Stoffidentifikation.",
