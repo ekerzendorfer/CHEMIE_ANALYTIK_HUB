@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.10.0";
+  const HUB_VERSION = "0.11.0";
 
   const els = {};
   let db = null;
@@ -219,9 +219,13 @@
           ? "Destillation übernommen: F1, F2, F3 und Rückstand wurden als Proben erzeugt · Trennqualität " +
             String(result.evaluation && result.evaluation.quality_score || "–") + "/5."
           : result.analysis_type === "STRUCTURE_ELUCIDATION" && result.evaluation && result.evaluation.hypothesis
-            ? "Strukturhypothese " + String(result.peak_id || "Peak") + ": " +
-              String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
-              " · mit M/MS/IR/¹H-NMR vereinbar; GC-Bestätigung noch ausständig."
+            ? (result.peak_id
+              ? "Strukturhypothese " + String(result.peak_id) + ": " +
+                String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
+                " · mit M/MS/IR/¹H-NMR vereinbar; GC-Bestätigung noch ausständig."
+              : "Strukturhypothese Feststoff: " +
+                String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
+                " · mit Voranalyse, M/MS/IR/¹H-NMR vereinbar; Schmelzpunktbestätigung noch ausständig.")
             : result.analysis_type === "GC_CONFIRMATION" && result.evaluation
               ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
                 String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
@@ -272,6 +276,16 @@
         r.evaluation && r.evaluation.identity_status === "supported";
     }) || null;
   }
+
+  function structureResultForSourceResult(sourceResultId) {
+    return state.results.find(function (r) {
+      return r.analysis_type === "STRUCTURE_ELUCIDATION" &&
+        r.source_result_id === sourceResultId &&
+        !r.peak_id &&
+        r.evaluation && r.evaluation.identity_status === "supported";
+    }) || null;
+  }
+
 
   function applyGcConfirmation(result) {
     if (!result || !result.source_result_id || !result.peak_id) return;
@@ -834,6 +848,43 @@
     window.location.href = target.toString();
   }
 
+  function startSolidStructureLab(sample, screeningResult) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+    if (!screeningResult || !screeningResult.evaluation) {
+      alert("Die qualitative Voranalyse fehlt.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "STRUKTUR_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "STRUCTURE_ELUCIDATION",
+      sourceResultId: screeningResult.result_id,
+      input: {
+        mode: "solid_screening",
+        structure_mode: "basic",
+        target_substance_id: "SALICYLIC_ACID",
+        display_label: sample.name_de,
+        prior_findings: screeningResult.evaluation.supported_features || {},
+        assignment_text: "Die klassische Voranalyse hat bereits allgemeine Strukturmerkmale ergeben. Nutze diese Vorbefunde zusammen mit M, MS, IR und besonders ¹H-NMR, um eine konkrete Strukturhypothese für den unbekannten Feststoff zu entwickeln."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../STRUKTUR_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startGcConfirmation(sample, gcResult, peak, structureResult, knownStandard) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -1098,10 +1149,19 @@
           return '<li><strong>' + escapeHtml(organicFeatureLabel(entry[0])) + '</strong> · ' +
             escapeHtml(organicStrengthLabel(strength)) + '</li>';
         }).join("");
+      const solidStructureResult = structureResultForSourceResult(organicSolidResult.result_id);
+      const structureStep = solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
+        ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
+          escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
+          '</span><span class="peak-next">Nächster späterer Beweisschritt: Schmelz-/Mischschmelzpunkt mit Referenzsubstanz.</span></div>'
+        : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
+          '">Im STRUKTUR-LAB untersuchen</button>';
+
       organicHtml = '<div class="guidance-box organic-screening"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
         '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>' +
         (featureRows ? '<ul>' + featureRows + '</ul>' : '<p>Noch keine auswertbaren Strukturmerkmale zurückgegeben.</p>') +
-        '<p class="screening-next">Nächster späterer Schritt: instrumentelle Strukturaufklärung. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p></div>';
+        '<p class="screening-next">Die Vorbefunde werden als Startwissen an die instrumentelle Strukturaufklärung übergeben. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p>' +
+        structureStep + '</div>';
     }
 
     let otherHtml = "";
@@ -1129,6 +1189,13 @@
 
     els.resultGuidance.hidden = false;
     els.resultGuidance.innerHTML = html;
+
+    els.resultGuidance.querySelectorAll(".solid-structure-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const screeningResult = state.results.find(function (r) { return r.result_id === btn.dataset.screeningResult; });
+        if (screeningResult) startSolidStructureLab(sample, screeningResult);
+      });
+    });
 
     els.resultGuidance.querySelectorAll(".peak-structure-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {

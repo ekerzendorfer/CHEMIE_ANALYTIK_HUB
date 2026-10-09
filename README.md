@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.10.0 – organischer Destillationsrückstand: qualitative Voranalyse  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.10.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.11.0 – Feststoff-Voranalyse → STRUKTUR-LAB  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.11.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -249,3 +249,18 @@ Für VCÖ-01 vorgesehene Methoden:
 Die Voranalyse darf ausdrücklich **keine Stoffidentität** zurückgeben. Zulässige Rückgabe sind nur Beobachtungen und allgemeine Strukturmerkmale, z. B. Carbonsäurefunktion, phenolische OH-Gruppe oder ein Hinweis auf ein ungesättigtes/aromatisches System.
 
 Der Schmelzpunkt bleibt für einen späteren unabhängigen Bestätigungsschritt reserviert. STRUKTUR_LAB und quantitative Titration folgen in getrennten Entwicklungsstufen.
+
+
+## v0.11 – Feststoff-Voranalyse → STRUKTUR-LAB
+
+Nach dem ORGANIC_SOLID_SCREENING kann der isolierte VCÖ-01-Feststoff direkt zur instrumentellen Strukturaufklärung weitergegeben werden.
+
+Der Hub übergibt:
+- das Feststoff-Sample
+- die allgemeine qualitative Voranalyse als `prior_findings`
+- intern den kuratierten Zielstoff für den passenden Strukturfall
+- keine Stoffidentität im SchülerInnen-UI
+
+STRUKTUR-LAB zeigt die Vorbefunde als bereits bekanntes Startwissen und bearbeitet anschließend M, EI-MS, IR und ¹H-NMR.
+
+Nach einer korrekten Strukturhypothese bleibt der Status `supported`. Für den Feststoff ist als unabhängige Bestätigung ein späterer Schmelz-/Mischschmelzpunkt vorgesehen.
