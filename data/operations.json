@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.6.0",
+  "schema_version": "0.10.0",
   "operations": [
     {
       "id": "FILTER",
@@ -93,6 +93,16 @@
         "aqueous_phase",
         "organic_phase"
       ]
+    },
+    {
+      "id": "ISOLATE_RESIDUE_SOLID",
+      "name_de": "Rückstand abkühlen und Feststoff isolieren",
+      "category": "sample_preparation",
+      "creates_samples": true,
+      "output_roles": [
+        "unknown_organic_solid"
+      ],
+      "note_de": "Verbliebene flüchtige Komponenten werden entfernt; der nichtflüchtige organische Rückstand wird als Feststoff für die qualitative Voranalyse bereitgestellt."
     }
   ]
 }
