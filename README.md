@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.9.1 – Mischproben-Sperre und Standardtransfer  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.9.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.10.0 – organischer Destillationsrückstand: qualitative Voranalyse  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.10.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -227,3 +227,25 @@ Mischfraktionen bleiben analytisch wertvoll:
 - so lassen sich beide Komponenten einer Übergangsfraktion chromatographisch bestätigen, ohne eine unrealistische Reinstoff-Spektroskopie der Mischung vorzutäuschen
 
 Die 95-%-Grenze ist eine didaktische Freigaberegel. Peakflächen-% im vereinfachten FID-Modell sind keine exakten Stoffmengen-%.
+
+
+## v0.10 – organischer Destillationsrückstand
+
+Der nichtflüchtige Destillationsrückstand erhält einen eigenen, bewusst kleinen Analyseweg.
+
+Ablauf:
+- `VCOE01_RESIDUE`: Rückstand aus der Destillation; kann noch flüchtige Reste enthalten
+- lokale Probenvorbereitung `ISOLATE_RESIDUE_SOLID`
+- neues Sample `VCOE01_RESIDUE_SOLID`: unbekannter weißer organischer Feststoff
+- Übergabe an `ORG_FESTSTOFF_LAB` als `ORGANIC_SOLID_SCREENING`
+
+Für VCÖ-01 vorgesehene Methoden:
+- Lösungsverhalten
+- pH einer sinnvollen wässrigen Phase
+- Hydrogencarbonatprobe
+- Fe(III)-Probe
+- Brennprobe
+
+Die Voranalyse darf ausdrücklich **keine Stoffidentität** zurückgeben. Zulässige Rückgabe sind nur Beobachtungen und allgemeine Strukturmerkmale, z. B. Carbonsäurefunktion, phenolische OH-Gruppe oder ein Hinweis auf ein ungesättigtes/aromatisches System.
+
+Der Schmelzpunkt bleibt für einen späteren unabhängigen Bestätigungsschritt reserviert. STRUKTUR_LAB und quantitative Titration folgen in getrennten Entwicklungsstufen.
