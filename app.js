@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.11.0";
+  const HUB_VERSION = "0.12.0";
 
   const els = {};
   let db = null;
@@ -230,6 +230,10 @@
               ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
                 String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
                 " · Referenzstandard und Aufstockung stimmen überein."
+              : result.analysis_type === "MELTING_POINT_CONFIRMATION" && result.evaluation
+                ? "Feststoffidentität bestätigt: " +
+                  String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
+                  " · Schmelzbereich, Referenz und Mischschmelzpunkt stimmen überein."
               : result.analysis_type === "ORGANIC_SOLID_SCREENING" && result.evaluation
                 ? "Organische Feststoff-Voranalyse abgeschlossen: " + formatOrganicFeatureSummary(result.evaluation.supported_features) +
                   ". Keine Stoffidentität wurde vergeben."
@@ -285,6 +289,15 @@
         r.evaluation && r.evaluation.identity_status === "supported";
     }) || null;
   }
+
+  function meltingConfirmationForStructureResult(structureResultId) {
+    return state.results.find(function (r) {
+      return r.analysis_type === "MELTING_POINT_CONFIRMATION" &&
+        r.source_result_id === structureResultId &&
+        r.evaluation && r.evaluation.identity_status === "confirmed";
+    }) || null;
+  }
+
 
 
   function applyGcConfirmation(result) {
@@ -885,6 +898,45 @@
     window.location.href = target.toString();
   }
 
+  function startMeltingConfirmation(sample, structureResult) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+    const hypothesis = structureResult && structureResult.evaluation && structureResult.evaluation.hypothesis;
+    if (!hypothesis || !hypothesis.substance_id) {
+      alert("Für den Feststoff fehlt eine gestützte Strukturhypothese.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "ORG_FESTSTOFF_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "MELTING_POINT_CONFIRMATION",
+      sourceResultId: structureResult.result_id,
+      input: {
+        mode: "melting_confirmation",
+        model_ref: "vcoe01_residue_solid_v1",
+        source_structure_result_id: structureResult.result_id,
+        hypothesis_substance_id: hypothesis.substance_id,
+        hypothesis_name_de: hypothesis.name_de || hypothesis.substance_id,
+        display_label: sample.name_de,
+        note: "Bestätige die spektroskopisch gestützte Feststoffhypothese unabhängig durch Schmelzbereich, gezielten Referenzstandard und Mischschmelzpunkt."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../ORG_FESTSTOFF_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startGcConfirmation(sample, gcResult, peak, structureResult, knownStandard) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -1150,12 +1202,18 @@
             escapeHtml(organicStrengthLabel(strength)) + '</li>';
         }).join("");
       const solidStructureResult = structureResultForSourceResult(organicSolidResult.result_id);
-      const structureStep = solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
-        ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
-          escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
-          '</span><span class="peak-next">Nächster späterer Beweisschritt: Schmelz-/Mischschmelzpunkt mit Referenzsubstanz.</span></div>'
-        : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
-          '">Im STRUKTUR-LAB untersuchen</button>';
+      const meltingConfirmation = solidStructureResult ? meltingConfirmationForStructureResult(solidStructureResult.result_id) : null;
+      const structureStep = meltingConfirmation && meltingConfirmation.evaluation
+        ? '<div class="solid-structure-state"><span class="peak-status confirmed">Bestätigt: ' +
+          escapeHtml(meltingConfirmation.evaluation.confirmed_name_de || meltingConfirmation.evaluation.confirmed_substance_id || "Identität") +
+          '</span><span class="peak-next confirmed-text">Beweiskette abgeschlossen: Strukturaufklärung + Referenz + Mischschmelzpunkt.</span></div>'
+        : solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
+          ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
+            escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
+            '</span><button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
+            '">Mit Schmelz- & Mischschmelzpunkt bestätigen</button></div>'
+          : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
+            '">Im STRUKTUR-LAB untersuchen</button>';
 
       organicHtml = '<div class="guidance-box organic-screening"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
         '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>' +
@@ -1194,6 +1252,13 @@
       btn.addEventListener("click", function () {
         const screeningResult = state.results.find(function (r) { return r.result_id === btn.dataset.screeningResult; });
         if (screeningResult) startSolidStructureLab(sample, screeningResult);
+      });
+    });
+
+    els.resultGuidance.querySelectorAll(".solid-melting-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const structureResult = state.results.find(function (r) { return r.result_id === btn.dataset.structureResult; });
+        if (structureResult) startMeltingConfirmation(sample, structureResult);
       });
     });
 
@@ -1298,6 +1363,7 @@
       GC: "Gaschromatographie",
       STRUCTURE_ELUCIDATION: "Strukturaufklärung",
       GC_CONFIRMATION: "GC-Identitätsbestätigung",
+      MELTING_POINT_CONFIRMATION: "Schmelzpunkt-Bestätigung",
       ORGANIC_SOLID_SCREENING: "Organische Feststoff-Voranalyse",
       ORG_SOLID_SCREENING: "Organische Feststoffanalyse",
       ORG_FESTSTOFF_LAB: "Organische Feststoffanalyse",
