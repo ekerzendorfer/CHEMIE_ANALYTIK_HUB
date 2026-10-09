@@ -768,6 +768,7 @@
           "FLAME"
         ],
         required_evidence: [
+          "SOLUBILITY",
           "BICARBONATE",
           "FE3",
           "FLAME"
