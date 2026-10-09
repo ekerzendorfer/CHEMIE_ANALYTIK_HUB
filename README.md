@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.11.0 – Feststoff-Voranalyse → STRUKTUR-LAB  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.11.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.12.0 – Feststoffidentität durch Mischschmelzpunkt bestätigen  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.12.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -264,3 +264,17 @@ Der Hub übergibt:
 STRUKTUR-LAB zeigt die Vorbefunde als bereits bekanntes Startwissen und bearbeitet anschließend M, EI-MS, IR und ¹H-NMR.
 
 Nach einer korrekten Strukturhypothese bleibt der Status `supported`. Für den Feststoff ist als unabhängige Bestätigung ein späterer Schmelz-/Mischschmelzpunkt vorgesehen.
+
+
+## v0.12 – Schmelz-/Mischschmelzpunkt-Bestätigung
+
+Nach einer gestützten Feststoff-Strukturhypothese startet der Hub ORG_FESTSTOFF_LAB im Modus `melting_confirmation`.
+
+Beweiskette:
+1. Schmelzbereich der unbekannten Probe
+2. Schmelzbereich des gezielt gewählten Referenzstandards
+3. 1:1-Mischschmelzpunkt
+
+Erst nach übereinstimmendem Referenzbereich und fehlender relevanter Depression oder Verbreiterung der Mischung wird die Feststoffidentität als `confirmed` geführt.
+
+Für VCÖ-01 ist damit die qualitative Identitätskette der Salicylsäure abgeschlossen; die quantitative Titration bleibt der nächste eigene Entwicklungsschritt.
