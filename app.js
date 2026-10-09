@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.9.1";
+  const HUB_VERSION = "0.10.0";
 
   const els = {};
   let db = null;
@@ -226,7 +226,10 @@
               ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
                 String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
                 " · Referenzstandard und Aufstockung stimmen überein."
-              : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
+              : result.analysis_type === "ORGANIC_SOLID_SCREENING" && result.evaluation
+                ? "Organische Feststoff-Voranalyse abgeschlossen: " + formatOrganicFeatureSummary(result.evaluation.supported_features) +
+                  ". Keine Stoffidentität wurde vergeben."
+                : prettyAnalysis(result.analysis_type) + ": digitales RESULT " + result.result_id + " von " + result.app_id + " übernommen.";
       state.journal.push({
         ts: new Date().toISOString(),
         type: "result",
@@ -469,7 +472,8 @@
       const ionEnabled = sample.id === "VCOE01_ION_ALIQUOT" && analysis === "ION_FISHING";
       const gcEnabled = ["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id) &&
         analysis === "GC_LAB" && !!state.runtimeSamples[sample.id];
-      const enabled = spectralCalibration || ionEnabled || gcEnabled;
+      const organicSolidEnabled = sample.id === "VCOE01_RESIDUE_SOLID" && analysis === "ORG_SOLID_SCREENING";
+      const enabled = spectralCalibration || ionEnabled || gcEnabled || organicSolidEnabled;
       btn.className = "action-btn " + (enabled ? "" : "secondary");
       btn.disabled = !enabled;
       btn.textContent = spectralCalibration
@@ -478,13 +482,17 @@
           ? "Ionenfischen öffnen"
           : gcEnabled
             ? "GC-Lab öffnen"
-            : prettyAnalysis(analysis) + " · vorbereitet";
+            : organicSolidEnabled
+              ? "Organische Feststoffanalyse öffnen"
+              : prettyAnalysis(analysis) + " · vorbereitet";
       if (spectralCalibration) {
         btn.addEventListener("click", function () { startSpectralLab(sample); });
       } else if (ionEnabled) {
         btn.addEventListener("click", function () { startIonFishing(sample); });
       } else if (gcEnabled) {
         btn.addEventListener("click", function () { startGcLab(sample); });
+      } else if (organicSolidEnabled) {
+        btn.addEventListener("click", function () { startOrganicSolidLab(sample); });
       }
       els.actions.appendChild(btn);
     });
@@ -510,7 +518,9 @@
     } else if (["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id)) {
       els.actionHint.textContent = "Diese Fraktion wurde im akzeptierten Destillations-Run erzeugt. Ihre tatsächliche Zusammensetzung bleibt verborgen. Im GC gilt: Ein einzelner sauberer Peak kann übernommen werden; bei mehreren Peaks müssen benachbarte Peaks mindestens Rₛ ≥ 1,5 erreichen.";
     } else if (sample.id === "VCOE01_RESIDUE") {
-      els.actionHint.textContent = "Im nichtflüchtigen Rückstand bleibt der organische Analyt zurück. Dieser Zweig wird später an das Titrationslabor angebunden.";
+      els.actionHint.textContent = "Der Destillationsrückstand kann noch flüchtige Reste enthalten. Kühle ihn ab und entferne verbliebene flüchtige Komponenten, bevor der organische Feststoff untersucht wird.";
+    } else if (sample.id === "VCOE01_RESIDUE_SOLID") {
+      els.actionHint.textContent = "Der isolierte weiße Feststoff wird zunächst klassisch voruntersucht. Ziel sind allgemeine Strukturmerkmale – keine Stoffidentifikation. Ein Schmelzpunkt bleibt bewusst für die spätere Bestätigung reserviert.";
     } else {
       els.actionHint.textContent = "Weitere Stationen werden schrittweise an dieselbe CORE-/RESULT-Schnittstelle angebunden.";
     }
@@ -537,6 +547,39 @@
     const map = {"Cu2+":"Cu²⁺","SO4 2-":"SO₄²⁻"};
     return map[value] || value || "–";
   }
+
+  function organicFeatureLabel(id) {
+    const map = {
+      carboxylic_acid: "Carbonsäurefunktion",
+      phenolic_oh: "phenolische OH-Gruppe",
+      aromatic_or_unsaturated: "ungesättigtes/aromatisches System",
+      acidic_aqueous_phase: "saure wässrige Phase",
+      polar_character: "polarer Charakter"
+    };
+    return map[id] || id;
+  }
+
+  function organicStrengthLabel(value) {
+    const map = {
+      strong: "stark gestützt",
+      supported: "gestützt",
+      indication: "Hinweis",
+      observed: "beobachtet"
+    };
+    return map[value] || value || "Befund";
+  }
+
+  function formatOrganicFeatureSummary(features) {
+    if (!features || typeof features !== "object") return "allgemeine Strukturmerkmale dokumentiert";
+    const parts = Object.entries(features)
+      .filter(function (entry) { return !!entry[1]; })
+      .map(function (entry) {
+        const strength = typeof entry[1] === "string" ? entry[1] : entry[1].strength;
+        return organicFeatureLabel(entry[0]) + " (" + organicStrengthLabel(strength) + ")";
+      });
+    return parts.length ? parts.join(", ") : "allgemeine Strukturmerkmale dokumentiert";
+  }
+
 
   function applyProducedSamples(result) {
     (result.produced_samples || []).forEach(function (produced) {
@@ -692,6 +735,54 @@
     });
 
     const target = new URL("../GC_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
+  function startOrganicSolidLab(sample) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "ORG_FESTSTOFF_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "ORGANIC_SOLID_SCREENING",
+      input: {
+        mode: "qualitative_screening",
+        model_ref: "vcoe01_residue_solid_v1",
+        display_label: "Unbekannter weißer organischer Feststoff",
+        hide_identity: true,
+        allowed_methods: [
+          "SOLUBILITY",
+          "PH_AQUEOUS",
+          "BICARBONATE",
+          "FE3",
+          "FLAME"
+        ],
+        required_evidence: [
+          "SOLUBILITY",
+          "BICARBONATE",
+          "FE3",
+          "FLAME"
+        ],
+        output_policy: {
+          identify_substance: false,
+          return_supported_features_only: true
+        },
+        note: "Untersuche den unbekannten weißen Feststoff mit geeigneten klassischen Vorproben. Gib nur allgemeine Strukturmerkmale zurück. Die Stoffidentität und der Schmelzpunkt bleiben für spätere Analyseschritte offen."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../ORG_FESTSTOFF_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
     window.location.href = target.toString();
@@ -916,6 +1007,14 @@
       return r.sample_id === sample.id && r.analysis_type === "GC" && r.status === "completed";
     });
 
+    const organicSolidResult = state.results
+      .filter(function (r) {
+        return r.sample_id === sample.id &&
+          r.analysis_type === "ORGANIC_SOLID_SCREENING" &&
+          r.status === "completed";
+      })
+      .slice(-1)[0] || null;
+
     const otherResults = state.results
       .filter(function (r) { return r.sample_id === sample.id; })
       .filter(function (r) {
@@ -989,6 +1088,22 @@
       }).join("");
     }
 
+    let organicHtml = "";
+    if (organicSolidResult) {
+      const features = organicSolidResult.evaluation && organicSolidResult.evaluation.supported_features || {};
+      const featureRows = Object.entries(features)
+        .filter(function (entry) { return !!entry[1]; })
+        .map(function (entry) {
+          const strength = typeof entry[1] === "string" ? entry[1] : entry[1].strength;
+          return '<li><strong>' + escapeHtml(organicFeatureLabel(entry[0])) + '</strong> · ' +
+            escapeHtml(organicStrengthLabel(strength)) + '</li>';
+        }).join("");
+      organicHtml = '<div class="guidance-box organic-screening"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
+        '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>' +
+        (featureRows ? '<ul>' + featureRows + '</ul>' : '<p>Noch keine auswertbaren Strukturmerkmale zurückgegeben.</p>') +
+        '<p class="screening-next">Nächster späterer Schritt: instrumentelle Strukturaufklärung. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p></div>';
+    }
+
     let otherHtml = "";
     if (otherResults.length) {
       const latest = otherResults[otherResults.length - 1];
@@ -1005,7 +1120,7 @@
       otherHtml = hintHtml + realHtml;
     }
 
-    const html = gcHtml + otherHtml;
+    const html = gcHtml + organicHtml + otherHtml;
     if (!html) {
       els.resultGuidance.innerHTML = "";
       els.resultGuidance.hidden = true;
@@ -1116,6 +1231,9 @@
       GC: "Gaschromatographie",
       STRUCTURE_ELUCIDATION: "Strukturaufklärung",
       GC_CONFIRMATION: "GC-Identitätsbestätigung",
+      ORGANIC_SOLID_SCREENING: "Organische Feststoff-Voranalyse",
+      ORG_SOLID_SCREENING: "Organische Feststoffanalyse",
+      ORG_FESTSTOFF_LAB: "Organische Feststoffanalyse",
       STRUKTUR_LAB: "Struktur-Lab"
     };
     return map[id] || id || "Analyse";

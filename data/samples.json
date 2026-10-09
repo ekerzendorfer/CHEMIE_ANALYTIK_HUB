@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.7.0",
+  "schema_version": "0.10.0",
   "samples": [
     {
       "id": "VCOE01_RAW",
@@ -322,10 +322,33 @@
           "role": "possible_residual_volatile"
         }
       ],
-      "compatible_analyses": [
-        "TITRATION"
+      "runtime_generated": true,
+      "allowed_operations": [
+        "ISOLATE_RESIDUE_SOLID"
+      ]
+    },
+    {
+      "id": "VCOE01_RESIDUE_SOLID",
+      "case_id": "VCOE01",
+      "name_de": "Isolierter unbekannter weißer Feststoff",
+      "sample_type": "derived",
+      "parent_sample_id": "VCOE01_RESIDUE",
+      "created_by": "ISOLATE_RESIDUE_SOLID",
+      "physical_state": "solid",
+      "homogeneous": true,
+      "composition_internal": [
+        {
+          "substance_id": "SALICYLIC_ACID",
+          "role": "unknown_nonvolatile_organic_solid"
+        }
       ],
-      "runtime_generated": true
+      "compatible_analyses": [
+        "ORG_SOLID_SCREENING"
+      ],
+      "preparation_internal": {
+        "status": "development_model",
+        "note": "Nach Abkühlen und Entfernen verbliebener flüchtiger Komponenten wird der nichtflüchtige organische Analyt als weißer Feststoff für die qualitative Voranalyse bereitgestellt. Die Stoffidentität bleibt im SchülerInnenbetrieb verborgen."
+      }
     },
     {
       "id": "STD_ETHYL_ACETATE",
