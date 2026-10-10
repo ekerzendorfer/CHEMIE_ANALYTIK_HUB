@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.12.0 – Feststoffidentität durch Mischschmelzpunkt bestätigen  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.12.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.13.0 – quantitative Salicylsäurebestimmung  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.13.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -278,3 +278,18 @@ Beweiskette:
 Erst nach übereinstimmendem Referenzbereich und fehlender relevanter Depression oder Verbreiterung der Mischung wird die Feststoffidentität als `confirmed` geführt.
 
 Für VCÖ-01 ist damit die qualitative Identitätskette der Salicylsäure abgeschlossen; die quantitative Titration bleibt der nächste eigene Entwicklungsschritt.
+
+
+## v0.13 – quantitative Salicylsäurebestimmung
+
+Nach bestätigter Salicylsäure-Identität kann der Hub eine gezielte quantitative Titration im TITRATIONSTOOL starten.
+
+VCÖ-01-Modell:
+- gesamter Rückstand quantitativ auf 100,0 mL
+- 20,00 mL Aliquot
+- 0,0200 mol/L NaOH
+- Auswertung des ersten Äquivalenzpunkts
+- Carboxylproton: n(NaOH) : n(Salicylsäure) = 1 : 1
+- Rückrechnung auf Stoffmenge und Masse im gesamten ursprünglichen Rückstand
+
+Der interne Entwicklungswert beträgt 0,138121 g Salicylsäure und wird im SchülerInnen-UI nicht vorgegeben. Das TITRATIONSTOOL gibt das quantitative RESULT erst nach vollständig korrekt ausgefüllter Rechenkette zurück.

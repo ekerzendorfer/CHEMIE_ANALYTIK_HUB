@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.12.0";
+  const HUB_VERSION = "0.13.0";
 
   const els = {};
   let db = null;
@@ -234,6 +234,11 @@
                 ? "Feststoffidentität bestätigt: " +
                   String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
                   " · Schmelzbereich, Referenz und Mischschmelzpunkt stimmen überein."
+              : result.analysis_type === "ACID_BASE_TITRATION_QUANT" && result.evaluation
+                ? "Quantitative Bestimmung: " +
+                  String(result.evaluation.substance_name_de || "Analyt") + " · m = " +
+                  Number(result.evaluation.analyte_mass_g || 0).toLocaleString("de-AT",{minimumFractionDigits:3,maximumFractionDigits:4}) +
+                  " g im ursprünglichen Rückstand."
               : result.analysis_type === "ORGANIC_SOLID_SCREENING" && result.evaluation
                 ? "Organische Feststoff-Voranalyse abgeschlossen: " + formatOrganicFeatureSummary(result.evaluation.supported_features) +
                   ". Keine Stoffidentität wurde vergeben."
@@ -297,6 +302,15 @@
         r.evaluation && r.evaluation.identity_status === "confirmed";
     }) || null;
   }
+
+  function quantResultForConfirmation(confirmationResultId) {
+    return state.results.find(function (r) {
+      return r.analysis_type === "ACID_BASE_TITRATION_QUANT" &&
+        r.source_result_id === confirmationResultId &&
+        r.evaluation && r.evaluation.quantification_status === "completed";
+    }) || null;
+  }
+
 
 
 
@@ -937,6 +951,51 @@
     window.location.href = target.toString();
   }
 
+  function startSalicylicQuantitation(sample, confirmationResult) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+    if (!confirmationResult || !confirmationResult.evaluation ||
+        confirmationResult.evaluation.confirmed_substance_id !== "SALICYLIC_ACID") {
+      alert("Für diese Probe fehlt die bestätigte Salicylsäure-Identität.");
+      return;
+    }
+
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "TITRATIONSTOOL",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "ACID_BASE_TITRATION_QUANT",
+      sourceResultId: confirmationResult.result_id,
+      input: {
+        mode: "hub_quantitative_salicylic",
+        source_confirmation_result_id: confirmationResult.result_id,
+        substance_id: "SALICYLIC_ACID",
+        substance_name_de: "Salicylsäure",
+        display_label: sample.name_de,
+        target_mass_g: 0.138121,
+        stock_volume_ml: 100.0,
+        aliquot_ml: 20.00,
+        titrant_concentration_mol_l: 0.0200,
+        molar_mass_g_mol: 138.121,
+        pka1: 2.97,
+        pka2: 13.60,
+        note: "Der gesamte bestätigte Rückstand wird quantitativ auf 100,0 mL gebracht; ein 20,00-mL-Aliquot wird mit 0,0200 mol/L NaOH bis zum ersten Äquivalenzpunkt titriert."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../TITRATIONSTOOL/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startGcConfirmation(sample, gcResult, peak, structureResult, knownStandard) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -1203,17 +1262,25 @@
         }).join("");
       const solidStructureResult = structureResultForSourceResult(organicSolidResult.result_id);
       const meltingConfirmation = solidStructureResult ? meltingConfirmationForStructureResult(solidStructureResult.result_id) : null;
-      const structureStep = meltingConfirmation && meltingConfirmation.evaluation
-        ? '<div class="solid-structure-state"><span class="peak-status confirmed">Bestätigt: ' +
-          escapeHtml(meltingConfirmation.evaluation.confirmed_name_de || meltingConfirmation.evaluation.confirmed_substance_id || "Identität") +
-          '</span><span class="peak-next confirmed-text">Beweiskette abgeschlossen: Strukturaufklärung + Referenz + Mischschmelzpunkt.</span></div>'
-        : solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
-          ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
-            escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
-            '</span><button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
-            '">Mit Schmelz- & Mischschmelzpunkt bestätigen</button></div>'
-          : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
-            '">Im STRUKTUR-LAB untersuchen</button>';
+      const quantResult = meltingConfirmation ? quantResultForConfirmation(meltingConfirmation.result_id) : null;
+      const structureStep = quantResult && quantResult.evaluation
+        ? '<div class="solid-structure-state quant-complete"><span class="peak-status confirmed">Bestätigt: ' +
+          escapeHtml(quantResult.evaluation.substance_name_de || "Salicylsäure") +
+          '</span><span class="quant-result">m = ' +
+          escapeHtml(Number(quantResult.evaluation.analyte_mass_g || 0).toLocaleString("de-AT",{minimumFractionDigits:3,maximumFractionDigits:4})) +
+          ' g im ursprünglichen Rückstand</span><span class="peak-next confirmed-text">VCÖ-01: organischer Rückstandsast qualitativ und quantitativ abgeschlossen.</span></div>'
+        : meltingConfirmation && meltingConfirmation.evaluation
+          ? '<div class="solid-structure-state"><span class="peak-status confirmed">Bestätigt: ' +
+            escapeHtml(meltingConfirmation.evaluation.confirmed_name_de || meltingConfirmation.evaluation.confirmed_substance_id || "Identität") +
+            '</span><button class="solid-quant-btn" type="button" data-confirmation-result="' + escapeHtml(meltingConfirmation.result_id) +
+            '">Salicylsäure quantitativ titrieren</button></div>'
+          : solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
+            ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
+              escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
+              '</span><button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
+              '">Mit Schmelz- & Mischschmelzpunkt bestätigen</button></div>'
+            : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
+              '">Im STRUKTUR-LAB untersuchen</button>';
 
       organicHtml = '<div class="guidance-box organic-screening"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
         '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>' +
@@ -1252,6 +1319,13 @@
       btn.addEventListener("click", function () {
         const screeningResult = state.results.find(function (r) { return r.result_id === btn.dataset.screeningResult; });
         if (screeningResult) startSolidStructureLab(sample, screeningResult);
+      });
+    });
+
+    els.resultGuidance.querySelectorAll(".solid-quant-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const confirmationResult = state.results.find(function (r) { return r.result_id === btn.dataset.confirmationResult; });
+        if (confirmationResult) startSalicylicQuantitation(sample, confirmationResult);
       });
     });
 
@@ -1364,6 +1438,7 @@
       STRUCTURE_ELUCIDATION: "Strukturaufklärung",
       GC_CONFIRMATION: "GC-Identitätsbestätigung",
       MELTING_POINT_CONFIRMATION: "Schmelzpunkt-Bestätigung",
+      ACID_BASE_TITRATION_QUANT: "Quantitative Säure-Base-Titration",
       ORGANIC_SOLID_SCREENING: "Organische Feststoff-Voranalyse",
       ORG_SOLID_SCREENING: "Organische Feststoffanalyse",
       ORG_FESTSTOFF_LAB: "Organische Feststoffanalyse",
