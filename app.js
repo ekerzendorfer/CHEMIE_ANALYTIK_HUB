@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.13.0";
+  const HUB_VERSION = "0.14.0";
 
   const els = {};
   let db = null;
@@ -34,7 +34,10 @@
     [
       "schemaBadge", "caseTitle", "caseDescription", "sampleTree", "detailTitle",
       "sampleMeta", "actions", "actionHint", "journal", "validatorSummary",
-      "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance"
+      "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance", "workArea",
+      "summaryOpenBtn", "caseSummary", "summaryBackBtn", "summaryTitle", "summaryLead",
+      "summaryStatusBadge", "summaryCompletion", "summaryRoutes", "summaryComponents",
+      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
@@ -51,6 +54,21 @@
       els.validatorDetails.classList.toggle("hidden");
       els.toggleDiag.textContent = els.validatorDetails.classList.contains("hidden")
         ? "Details anzeigen" : "Details ausblenden";
+    });
+
+    els.summaryOpenBtn.addEventListener("click", function () {
+      const readiness = caseSummaryReadiness();
+      if (!readiness.complete) return;
+      renderCaseSummary(readiness);
+      els.workArea.classList.add("hidden");
+      els.caseSummary.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    els.summaryBackBtn.addEventListener("click", function () {
+      els.caseSummary.classList.add("hidden");
+      els.workArea.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
 
@@ -398,6 +416,7 @@
     renderDetail();
     renderJournal();
     renderValidator();
+    renderSummaryAvailability();
   }
 
   function renderTree() {
