@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.14.1";
+  const HUB_VERSION = "0.15.0";
 
   const els = {};
   let db = null;
@@ -248,6 +248,11 @@
               ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
                 String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
                 " · Referenzstandard und Aufstockung stimmen überein."
+              : result.analysis_type === "PHOTOMETRIC_QUANT_EVALUATION" && result.evaluation
+                ? "Photometrische Auswertung abgeschlossen: m(" +
+                  String(result.evaluation.balance_as_name_de || "CuSO₄·5H₂O") + ") = " +
+                  Number(result.evaluation.cuso4_5h2o_mass_g || 0).toLocaleString("de-AT",{minimumFractionDigits:3,maximumFractionDigits:4}) +
+                  " g · Eichung und Rückrechnung im MESSWERT_LAB bearbeitet."
               : result.analysis_type === "MELTING_POINT_CONFIRMATION" && result.evaluation
                 ? "Feststoffidentität bestätigt: " +
                   String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
@@ -417,6 +422,15 @@
     return matches.length ? matches[matches.length - 1] : null;
   }
 
+  function photometricEvaluationForResult(sourceResultId) {
+    return state.results.filter(function (r) {
+      return r.analysis_type === "PHOTOMETRIC_QUANT_EVALUATION" &&
+        r.status === "completed" &&
+        r.source_result_id === sourceResultId &&
+        r.evaluation && r.evaluation.quantification_status === "completed";
+    }).slice(-1)[0] || null;
+  }
+
   function confirmationForSummary(substanceId, preferredSampleId) {
     const matches = state.results.filter(function (r) {
       return r.analysis_type === "GC_CONFIRMATION" &&
@@ -438,6 +452,7 @@
       return identified.cation === "Cu2+" && identified.anion === "SO4 2-";
     });
     const phot = latestCaseResult("UVVIS_CALIBRATION");
+    const photEval = phot ? photometricEvaluationForResult(phot.result_id) : null;
     const dist = latestCaseResult("FRACTIONAL_DISTILLATION");
     const ethyl = confirmationForSummary("ETHYL_ACETATE", "VCOE01_F1");
     const butanol = confirmationForSummary("BUTAN_1_OL", "VCOE01_F3");
@@ -459,7 +474,7 @@
 
     const checks = [
       { id: "ion", label: "Cu²⁺ / SO₄²⁻ qualitativ bestätigt", done: !!ion },
-      { id: "phot", label: "Photometrische Eichmessung abgeschlossen", done: !!phot },
+      { id: "phot", label: "Photometrie gemessen und im MESSWERT_LAB ausgewertet", done: !!photEval },
       { id: "dist", label: "Fraktionierende Destillation abgeschlossen", done: !!dist },
       { id: "ethyl", label: "Ethylacetat chromatographisch bestätigt", done: !!ethyl },
       { id: "butanol", label: "1-Butanol chromatographisch bestätigt", done: !!butanol },
@@ -475,6 +490,7 @@
       complete: checks.every(function (x) { return x.done; }),
       ion: ion,
       phot: phot,
+      photEval: photEval,
       dist: dist,
       ethyl: ethyl,
       butanol: butanol,
@@ -520,6 +536,25 @@
     }, 0);
     const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 1;
     return { slope: slope, intercept: intercept, r2: r2 };
+  }
+
+  function copperQuantFromEvaluation(result) {
+    if (!result || !result.evaluation || !result.student_calculation) return null;
+    const calc = result.student_calculation;
+    const reg = result.measurement && result.measurement.regression || {};
+    const standards = result.measurement && result.measurement.standard_measurements || [];
+    return {
+      wavelengthNm: Number(result.measurement && result.measurement.wavelength_nm),
+      standardsCount: standards.length,
+      unknownAbsorbance: Number(result.measurement && result.measurement.mean_unknown_absorbance),
+      slope: Number(reg.slope),
+      intercept: Number(reg.intercept),
+      r2: Number(reg.r2),
+      measurementConcentration: Number(calc.measurement_concentration_mol_l),
+      stockConcentration: Number(calc.stock_concentration_mol_l),
+      amountMol: Number(calc.amount_cu_mmol) / 1000,
+      pentahydrateMassG: Number(calc.cuso4_5h2o_mass_g)
+    };
   }
 
   function copperQuantSummary(photResult) {
@@ -606,7 +641,7 @@
 
   function renderCaseSummary(readiness) {
     readiness = readiness || caseSummaryReadiness();
-    const copper = copperQuantSummary(readiness.phot);
+    const copper = copperQuantFromEvaluation(readiness.photEval);
     const salMass = readiness.quant && readiness.quant.evaluation
       ? Number(readiness.quant.evaluation.analyte_mass_g) : NaN;
     const salVeq = readiness.quant && readiness.quant.measurement
@@ -1227,6 +1262,54 @@
     window.location.href = target.toString();
   }
 
+  function startMeasurementLab(sample, photResult) {
+    if (!window.AnalytikBridge) {
+      alert("Bridge ist nicht geladen.");
+      return;
+    }
+    if (!photResult || !photResult.measurement) {
+      alert("Die Photometer-Rohdaten fehlen.");
+      return;
+    }
+
+    const measurementSample = db.samples.find(function (s) { return s.id === "VCOE01_PHOT_AMMINE"; });
+    const stockSample = db.samples.find(function (s) { return s.id === "VCOE01_SOLID_AQ"; });
+    const prep = measurementSample && measurementSample.preparation_internal || {};
+    const stockPrep = stockSample && stockSample.preparation_internal || {};
+    const copperSalt = db.substances.find(function (s) { return s.id === "COPPER_SULFATE_PENTAHYDRATE"; });
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = "";
+    returnUrl.hash = "";
+
+    const run = window.AnalytikBridge.startRun({
+      appId: "MESSWERT_LAB",
+      sampleId: sample.id,
+      caseId: db.case.id,
+      analysisType: "PHOTOMETRIC_QUANT_EVALUATION",
+      sourceResultId: photResult.result_id,
+      input: {
+        mode: "hub_photometry_evaluation",
+        source_photometry_result_id: photResult.result_id,
+        display_label: sample.name_de,
+        wavelength_nm: photResult.measurement.wavelength_nm,
+        standard_measurements: photResult.measurement.standard_measurements || [],
+        unknown_measurements: photResult.measurement.unknown_measurements || [],
+        dilution_factor: Number(prep.dilution_factor) || 2.5,
+        stock_volume_ml: Number(stockPrep.dissolved_to_volume_ml) || 100.0,
+        balance_substance_id: "COPPER_SULFATE_PENTAHYDRATE",
+        balance_name_de: copperSalt ? copperSalt.name_de : "Kupfer(II)-sulfat-Pentahydrat",
+        balance_molar_mass_g_mol: copperSalt ? Number(copperSalt.molar_mass_g_mol) : 249.68,
+        note: "Prüfe die Eichdaten, beurteile die Regression und führe die quantitative Rückrechnung selbst schrittweise durch."
+      },
+      returnUrl: returnUrl.toString()
+    });
+
+    const target = new URL("../MESSWERT_LAB/", window.location.href);
+    target.searchParams.set("bridge", "1");
+    target.searchParams.set("run", run.run_id);
+    window.location.href = target.toString();
+  }
+
   function startSolidStructureLab(sample, screeningResult) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -1553,9 +1636,22 @@
     if (photCompletion) {
       const standards = photCompletion.measurement && photCompletion.measurement.standard_measurements || [];
       const unknowns = photCompletion.measurement && photCompletion.measurement.unknown_measurements || [];
-      completionHtml += '<div class="guidance-box completion-guidance"><strong>Quantitative Photometrie abgeschlossen</strong><p>' +
-        escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
-        escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden übernommen. Die Rückrechnung wird in der Abschlussansicht aus den gespeicherten Rohdaten durchgeführt.</p></div>';
+      const photEval = photometricEvaluationForResult(photCompletion.result_id);
+      if (photEval && photEval.evaluation) {
+        completionHtml += '<div class="guidance-box completion-guidance"><strong>Photometrische Messung und Auswertung abgeschlossen</strong><p>' +
+          escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
+          escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden im MESSWERT_LAB ausgewertet.</p>' +
+          '<span class="peak-status confirmed">m(' +
+          escapeHtml(photEval.evaluation.balance_as_name_de || "CuSO₄·5H₂O") + ') = ' +
+          escapeHtml(Number(photEval.evaluation.cuso4_5h2o_mass_g || 0).toLocaleString("de-AT",{minimumFractionDigits:3,maximumFractionDigits:4})) +
+          ' g</span></div>';
+      } else {
+        completionHtml += '<div class="guidance-box phot-eval-guidance"><strong>Photometrische Messdaten liegen vor</strong><p>' +
+          escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
+          escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden übernommen. Eine quantitative Aussage ist erst nach der nachvollziehbaren Auswertung zulässig.</p>' +
+          '<button class="phot-eval-btn" type="button" data-phot-result="' + escapeHtml(photCompletion.result_id) +
+          '">Im MESSWERT_LAB auswerten</button></div>';
+      }
     }
 
     let gcHtml = "";
@@ -1696,6 +1792,13 @@
       });
     });
 
+    els.resultGuidance.querySelectorAll(".phot-eval-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const photResult = state.results.find(function (r) { return r.result_id === btn.dataset.photResult; });
+        if (photResult) startMeasurementLab(sample, photResult);
+      });
+    });
+
     els.resultGuidance.querySelectorAll(".solid-quant-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const confirmationResult = state.results.find(function (r) { return r.result_id === btn.dataset.confirmationResult; });
@@ -1805,7 +1908,8 @@
       TITRATION: "Titrationslabor",
       UVVIS: "UV/VIS-Photometrie",
       UVVIS_SPECTRUM: "UV/VIS-Spektrum",
-      UVVIS_CALIBRATION: "Quantitative UV/VIS-Photometrie",
+      UVVIS_CALIBRATION: "UV/VIS-Photometrie · Messdaten",
+      PHOTOMETRIC_QUANT_EVALUATION: "Photometrische quantitative Auswertung",
       QUALITATIVE_ION_ANALYSIS: "Qualitative Ionenanalyse",
       FRACTIONAL_DISTILLATION: "Fraktionierende Destillation",
       GC: "Gaschromatographie",

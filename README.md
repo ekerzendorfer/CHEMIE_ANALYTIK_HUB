@@ -1,7 +1,7 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.14.0 – Abschlussansicht für VCÖ-01  
-**Basis:** CHEMIE_ANALYTIK_CORE schema v0.13.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
+**Version:** v0.15.0 – Cu-Photometrie über MESSWERT_LAB auswerten  
+**Basis:** CHEMIE_ANALYTIK_CORE schema v0.15.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
 
@@ -320,3 +320,16 @@ Die Abschlussansicht zeigt:
 Die Cu-Menge wird ausschließlich aus den gespeicherten UV/VIS-Rohdaten und den im Fallmodell dokumentierten Verdünnungs-/Volumenangaben rückgerechnet. Der Hydratationsgrad wird nicht als eigener experimenteller Nachweis ausgegeben; die Massenbilanz als CuSO₄·5H₂O ist ausdrücklich eine Bilanzierung gemäß VCÖ-01-Fallmodell.
 
 Ethylacetat und 1-Butanol bleiben in v0.14 quantitativ offen. Die Abschlussansicht kennzeichnet diese Lücke ausdrücklich, statt Peakflächen-% als Stoffmengen- oder Massenanteile auszugeben.
+
+
+## v0.15 – SpektralLab → MESSWERT_LAB → Hub
+
+Die quantitative Cu-Photometrie wird fachlich in Messung und Auswertung getrennt.
+
+1. SpektralLab erzeugt das `UVVIS_CALIBRATION`-RESULT mit Standards und unbekannter Absorbanz.
+2. Der Hub zeigt danach noch **kein** quantitatives Cu-Endergebnis, sondern bietet `Im MESSWERT_LAB auswerten` an.
+3. MESSWERT_LAB übernimmt die Rohdaten direkt, lässt Datenprüfung und lineare Regression sichtbar durchlaufen und fordert anschließend eine schrittweise SchülerInnenrechnung.
+4. Erst das RESULT `PHOTOMETRIC_QUANT_EVALUATION` gilt im Hub als abgeschlossene quantitative Cu-Bestimmung.
+5. Die Abschlussansicht verwendet ausschließlich dieses studentisch ausgewertete RESULT für die Cu-Mengenbilanz.
+
+Damit entfällt die bisherige stille Regression/Rückrechnung in der Abschlussansicht für neue Fälle. Die vorhandene interne Regressionsfunktion bleibt nur als Legacy-/Diagnosehelfer im Code bestehen.
