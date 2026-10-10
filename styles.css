@@ -176,3 +176,7 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .summary-missing{margin-top:10px;padding:8px 10px;border-radius:9px;background:#fff5df;color:#765412;font-size:.8rem;line-height:1.4}
 .completion-guidance{border-color:#b9d7c7;background:#f3faf6}
 .completion-guidance strong{color:#1f6b45}
+
+.phot-eval-guidance{border-color:#b8cfdf;background:#f1f7fb}
+.phot-eval-guidance strong{color:#245f7c}
+.phot-eval-btn{margin-top:8px;border:0;border-radius:9px;padding:9px 11px;background:#245f7c;color:#fff;font-weight:800;cursor:pointer}
