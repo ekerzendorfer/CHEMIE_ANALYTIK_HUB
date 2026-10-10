@@ -1,6 +1,6 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.13.0 – quantitative Salicylsäurebestimmung  
+**Version:** v0.14.0 – Abschlussansicht für VCÖ-01  
 **Basis:** CHEMIE_ANALYTIK_CORE schema v0.13.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
@@ -293,3 +293,30 @@ VCÖ-01-Modell:
 - Rückrechnung auf Stoffmenge und Masse im gesamten ursprünglichen Rückstand
 
 Der interne Entwicklungswert beträgt 0,138121 g Salicylsäure und wird im SchülerInnen-UI nicht vorgegeben. Das TITRATIONSTOOL gibt das quantitative RESULT erst nach vollständig korrekt ausgefüllter Rechenkette zurück.
+
+
+## v0.14 – Fall abschließen
+
+VCÖ-01 erhält eine eigene lesende Abschlussansicht. Sie wird erst freigeschaltet, wenn die wesentlichen Pflichtketten abgeschlossen sind:
+
+- Cu²⁺ / SO₄²⁻ qualitativ bestätigt
+- UV/VIS-Eichmessung vorhanden
+- fraktionierende Destillation abgeschlossen
+- Ethylacetat chromatographisch bestätigt
+- 1-Butanol chromatographisch bestätigt
+- organische Feststoff-Voranalyse abgeschlossen
+- Feststoffstruktur spektroskopisch gestützt
+- Salicylsäure durch Referenz- und Mischschmelzpunkt bestätigt
+- Salicylsäure quantitativ titriert
+
+Die Abschlussansicht zeigt:
+- den Analyseweg in drei Zweigen
+- identifizierte Bestandteile
+- Beweisketten pro Komponente
+- quantitative Ergebnisse
+- eine abschließende Fallbewertung
+- eine automatisch erzeugte Kurzfassung als Protokollhilfe
+
+Die Cu-Menge wird ausschließlich aus den gespeicherten UV/VIS-Rohdaten und den im Fallmodell dokumentierten Verdünnungs-/Volumenangaben rückgerechnet. Der Hydratationsgrad wird nicht als eigener experimenteller Nachweis ausgegeben; die Massenbilanz als CuSO₄·5H₂O ist ausdrücklich eine Bilanzierung gemäß VCÖ-01-Fallmodell.
+
+Ethylacetat und 1-Butanol bleiben in v0.14 quantitativ offen. Die Abschlussansicht kennzeichnet diese Lücke ausdrücklich, statt Peakflächen-% als Stoffmengen- oder Massenanteile auszugeben.
