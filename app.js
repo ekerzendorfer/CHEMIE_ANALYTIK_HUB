@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.14.0";
+  const HUB_VERSION = "0.14.1";
 
   const els = {};
   let db = null;
@@ -37,7 +37,7 @@
       "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance", "workArea",
       "summaryOpenBtn", "caseSummary", "summaryBackBtn", "summaryTitle", "summaryLead",
       "summaryStatusBadge", "summaryCompletion", "summaryRoutes", "summaryComponents",
-      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText"
+      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText", "summaryMissing"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
@@ -496,6 +496,10 @@
     els.summaryOpenBtn.title = readiness.complete
       ? "Alle Pflichtketten sind abgeschlossen."
       : "Noch offen: " + missing.join(" · ");
+    if (els.summaryMissing) {
+      els.summaryMissing.hidden = readiness.complete;
+      els.summaryMissing.textContent = readiness.complete ? "" : "Noch offen: " + missing.join(" · ");
+    }
   }
 
   function linearRegression(points) {
@@ -850,18 +854,30 @@
       const gcEnabled = ["VCOE01_F1","VCOE01_F2","VCOE01_F3"].includes(sample.id) &&
         analysis === "GC_LAB" && !!state.runtimeSamples[sample.id];
       const organicSolidEnabled = sample.id === "VCOE01_RESIDUE_SOLID" && analysis === "ORG_SOLID_SCREENING";
-      const enabled = spectralCalibration || ionEnabled || gcEnabled || organicSolidEnabled;
+      const ionCompleted = ionEnabled && sampleResults.some(function (r) {
+        const identified = r.evaluation && r.evaluation.identified || {};
+        return r.analysis_type === "QUALITATIVE_ION_ANALYSIS" && r.status === "completed" &&
+          identified.cation === "Cu2+" && identified.anion === "SO4 2-";
+      });
+      const photCompleted = spectralCalibration && sampleResults.some(function (r) {
+        return r.analysis_type === "UVVIS_CALIBRATION" && r.status === "completed";
+      });
+      const enabled = (spectralCalibration && !photCompleted) || (ionEnabled && !ionCompleted) || gcEnabled || organicSolidEnabled;
       btn.className = "action-btn " + (enabled ? "" : "secondary");
       btn.disabled = !enabled;
-      btn.textContent = spectralCalibration
-        ? "Quantitative Photometrie öffnen"
-        : ionEnabled
-          ? "Ionenfischen öffnen"
-          : gcEnabled
-            ? "GC-Lab öffnen"
-            : organicSolidEnabled
-              ? "Organische Feststoffanalyse öffnen"
-              : prettyAnalysis(analysis) + " · vorbereitet";
+      btn.textContent = photCompleted
+        ? "Photometrie abgeschlossen"
+        : ionCompleted
+          ? "Ionenanalyse abgeschlossen"
+          : spectralCalibration
+            ? "Quantitative Photometrie öffnen"
+            : ionEnabled
+              ? "Ionenfischen öffnen"
+              : gcEnabled
+                ? "GC-Lab öffnen"
+                : organicSolidEnabled
+                  ? "Organische Feststoffanalyse öffnen"
+                  : prettyAnalysis(analysis) + " · vorbereitet";
       if (spectralCalibration) {
         btn.addEventListener("click", function () { startSpectralLab(sample); });
       } else if (ionEnabled) {
@@ -1520,6 +1536,28 @@
         return (Array.isArray(evaluation.hints) && evaluation.hints.length) || evaluation.real_experiment;
       });
 
+    const ionCompletion = state.results
+      .filter(function (r) { return r.sample_id === sample.id && r.analysis_type === "QUALITATIVE_ION_ANALYSIS" && r.status === "completed"; })
+      .slice(-1)[0] || null;
+    const photCompletion = state.results
+      .filter(function (r) { return r.sample_id === sample.id && r.analysis_type === "UVVIS_CALIBRATION" && r.status === "completed"; })
+      .slice(-1)[0] || null;
+
+    let completionHtml = "";
+    if (ionCompletion && ionCompletion.evaluation && ionCompletion.evaluation.identified) {
+      completionHtml += '<div class="guidance-box completion-guidance"><strong>Qualitative Ionenanalyse abgeschlossen</strong><p>' +
+        escapeHtml(formatIon(ionCompletion.evaluation.identified.cation)) + ' und ' +
+        escapeHtml(formatIon(ionCompletion.evaluation.identified.anion)) +
+        ' wurden bestätigt. Dieser Pflichtbefund ist für den Fallabschluss erfüllt.</p></div>';
+    }
+    if (photCompletion) {
+      const standards = photCompletion.measurement && photCompletion.measurement.standard_measurements || [];
+      const unknowns = photCompletion.measurement && photCompletion.measurement.unknown_measurements || [];
+      completionHtml += '<div class="guidance-box completion-guidance"><strong>Quantitative Photometrie abgeschlossen</strong><p>' +
+        escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
+        escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden übernommen. Die Rückrechnung wird in der Abschlussansicht aus den gespeicherten Rohdaten durchgeführt.</p></div>';
+    }
+
     let gcHtml = "";
     if (gcResults.length) {
       gcHtml = gcResults.map(function (gcResult) {
@@ -1641,7 +1679,7 @@
       otherHtml = hintHtml + realHtml;
     }
 
-    const html = gcHtml + organicHtml + otherHtml;
+    const html = completionHtml + gcHtml + organicHtml + otherHtml;
     if (!html) {
       els.resultGuidance.innerHTML = "";
       els.resultGuidance.hidden = true;
