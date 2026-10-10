@@ -1,6 +1,6 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.15.0 – Cu-Photometrie über MESSWERT_LAB auswerten  
+**Version:** v0.16.0 – progressive Zwischenbilanz und kuratierte PubChem-Recherche  
 **Basis:** CHEMIE_ANALYTIK_CORE schema v0.15.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
@@ -333,3 +333,24 @@ Die quantitative Cu-Photometrie wird fachlich in Messung und Auswertung getrennt
 5. Die Abschlussansicht verwendet ausschließlich dieses studentisch ausgewertete RESULT für die Cu-Mengenbilanz.
 
 Damit entfällt die bisherige stille Regression/Rückrechnung in der Abschlussansicht für neue Fälle. Die vorhandene interne Regressionsfunktion bleibt nur als Legacy-/Diagnosehelfer im Code bestehen.
+
+
+## v0.16 – Progressive Zwischenbilanz
+
+Die bestehende Abschlussübersicht wird bereits nach dem ersten vollständig abgeschlossenen Hauptzweig als **Zwischenbilanz** freigeschaltet.
+
+- drei Hauptzweige mit eigenem Status: anorganisch, flüchtig organisch, nichtflüchtig organisch
+- Anzeige abgeschlossener Hauptzweige und Teilanalysen
+- ausschließlich bereits gesicherte Stoffidentitäten und quantitative Ergebnisse
+- offene Analysewege bleiben als Arbeitsstand sichtbar, ohne Stoffnamen vorwegzunehmen
+- nach Abschluss aller Pflichtketten geht dieselbe Ansicht nahtlos in **„Fall abschließen“** über
+
+## v0.16 – Kuratierte PubChem-Links
+
+Für die drei bestätigbaren organischen VCÖ-01-Komponenten sind kuratierte PubChem-Referenzen in den Stoffstammdaten hinterlegt:
+
+- Ethylacetat · CID 8857
+- 1-Butanol · CID 263
+- Salicylsäure · CID 338
+
+Der Link **„Stoff bei PubChem erkunden“** wird ausschließlich auf einer Ergebniskarte angezeigt, wenn die jeweilige Identität durch die vorgesehene Beweiskette bestätigt ist. Hypothesen oder noch offene Identitäten erhalten keinen Recherchelink.
