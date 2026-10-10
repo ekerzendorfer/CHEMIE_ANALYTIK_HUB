@@ -13,6 +13,12 @@
         "gc": "ethyl_acetate",
         "structure_lab": "ethyl_acetate",
         "mol_lab": "ethyl_acetate"
+      },
+      "external_refs": {
+        "pubchem": {
+          "cid": 8857,
+          "url": "https://pubchem.ncbi.nlm.nih.gov/compound/8857"
+        }
       }
     },
     {
@@ -26,6 +32,12 @@
         "distillation": "butan_1_ol",
         "gc": "butan_1_ol",
         "structure_lab": "butan_1_ol"
+      },
+      "external_refs": {
+        "pubchem": {
+          "cid": 263,
+          "url": "https://pubchem.ncbi.nlm.nih.gov/compound/263"
+        }
       }
     },
     {
@@ -39,6 +51,12 @@
         "titration": "salicylic_acid",
         "structure_lab": "salicylic_acid",
         "mol_lab": "salicylic_acid"
+      },
+      "external_refs": {
+        "pubchem": {
+          "cid": 338,
+          "url": "https://pubchem.ncbi.nlm.nih.gov/compound/338"
+        }
       }
     },
     {
