@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.13.0",
+  "schema_version": "0.15.0",
   "object_type": "RESULT",
   "required_fields": [
     "result_id",
@@ -80,7 +80,7 @@
     ]
   },
   "internal_payload_note_de": "Interner technischer Payload für die Kopplung nachfolgender Stationen; nicht als fachliche Lösung im SchülerInnen-UI anzeigen.",
-  "linked_result_note_de": "source_result_id verknüpft nachgeschaltete Evidenz mit ihrem fachlichen Ursprung. ACID_BASE_TITRATION_QUANT verweist beim VCÖ-01-Rückstand auf das bestätigende MELTING_POINT_CONFIRMATION-RESULT.",
+  "linked_result_note_de": "source_result_id verknüpft nachgeschaltete Evidenz mit ihrem fachlichen Ursprung. PHOTOMETRIC_QUANT_EVALUATION verweist auf das UVVIS_CALIBRATION-RESULT mit den ursprünglichen Photometer-Rohdaten.",
   "organic_solid_screening_contract": {
     "analysis_type": "ORGANIC_SOLID_SCREENING",
     "purpose_de": "Klassische Voranalyse eines unbekannten organischen Feststoffs ohne Stoffidentifikation.",
@@ -133,5 +133,32 @@
       "analyte_mass_g"
     ],
     "note_de": "Die quantitative Auswertung wird erst nach vollständiger SchülerInnenrechnung als RESULT an den Hub zurückgegeben."
+  },
+  "photometric_quant_evaluation_contract": {
+    "analysis_type": "PHOTOMETRIC_QUANT_EVALUATION",
+    "measurement_fields": [
+      "wavelength_nm",
+      "standard_measurements",
+      "unknown_measurements",
+      "regression",
+      "mean_unknown_absorbance"
+    ],
+    "student_calculation_fields": [
+      "measurement_concentration_mol_l",
+      "dilution_factor",
+      "stock_concentration_mol_l",
+      "stock_volume_ml",
+      "amount_cu_mmol",
+      "balance_molar_mass_g_mol",
+      "cuso4_5h2o_mass_g"
+    ],
+    "evaluation_fields": [
+      "quantification_status",
+      "analyte_id",
+      "balance_as_substance_id",
+      "balance_as_name_de",
+      "cuso4_5h2o_mass_g"
+    ],
+    "note_de": "Das quantitative RESULT wird erst nach sichtbarer Regression und vollständig korrekt bearbeiteter SchülerInnen-Rückrechnung aus dem MESSWERT_LAB zurückgegeben."
   }
 }
