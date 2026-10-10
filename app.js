@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.15.0";
+  const HUB_VERSION = "0.16.0";
 
   const els = {};
   let db = null;
@@ -58,7 +58,7 @@
 
     els.summaryOpenBtn.addEventListener("click", function () {
       const readiness = caseSummaryReadiness();
-      if (!readiness.complete) return;
+      if (!readiness.summaryAvailable) return;
       renderCaseSummary(readiness);
       els.workArea.classList.add("hidden");
       els.caseSummary.classList.remove("hidden");
@@ -484,9 +484,35 @@
       { id: "quant", label: "Salicylsäure quantitativ bestimmt", done: !!quant }
     ];
 
+    const branches = [
+      {
+        id: "inorganic",
+        label: "Anorganischer Zweig",
+        done: !!ion && !!photEval,
+        started: !!ion || !!phot || !!photEval
+      },
+      {
+        id: "volatile",
+        label: "Flüchtiger organischer Zweig",
+        done: !!dist && !!ethyl && !!butanol,
+        started: !!dist || !!ethyl || !!butanol
+      },
+      {
+        id: "solid",
+        label: "Nichtflüchtiger organischer Zweig",
+        done: !!screening && !!solidStructure && !!melting && !!quant,
+        started: !!screening || !!solidStructure || !!melting || !!quant
+      }
+    ];
+    const doneCount = checks.filter(function (x) { return x.done; }).length;
+    const completedBranchCount = branches.filter(function (x) { return x.done; }).length;
+
     return {
       checks: checks,
-      doneCount: checks.filter(function (x) { return x.done; }).length,
+      doneCount: doneCount,
+      branches: branches,
+      completedBranchCount: completedBranchCount,
+      summaryAvailable: completedBranchCount > 0,
       complete: checks.every(function (x) { return x.done; }),
       ion: ion,
       phot: phot,
@@ -504,17 +530,26 @@
   function renderSummaryAvailability() {
     if (!els.summaryOpenBtn) return;
     const readiness = caseSummaryReadiness();
-    els.summaryOpenBtn.disabled = !readiness.complete;
+    const branchTotal = readiness.branches.length;
+    els.summaryOpenBtn.disabled = !readiness.summaryAvailable;
     els.summaryOpenBtn.textContent = readiness.complete
       ? "Fall abschließen"
-      : "Fall abschließen · " + readiness.doneCount + "/" + readiness.checks.length;
-    const missing = readiness.checks.filter(function (x) { return !x.done; }).map(function (x) { return x.label; });
+      : readiness.summaryAvailable
+        ? "Zwischenbilanz · " + readiness.completedBranchCount + "/" + branchTotal + " Zweige"
+        : "Zwischenbilanz · nach 1. Hauptzweig";
     els.summaryOpenBtn.title = readiness.complete
       ? "Alle Pflichtketten sind abgeschlossen."
-      : "Noch offen: " + missing.join(" · ");
+      : readiness.summaryAvailable
+        ? readiness.doneCount + "/" + readiness.checks.length + " Teilanalysen abgeschlossen."
+        : "Die Zwischenbilanz wird freigeschaltet, sobald ein Hauptzweig vollständig abgeschlossen ist.";
     if (els.summaryMissing) {
       els.summaryMissing.hidden = readiness.complete;
-      els.summaryMissing.textContent = readiness.complete ? "" : "Noch offen: " + missing.join(" · ");
+      els.summaryMissing.textContent = readiness.complete ? "" :
+        (readiness.summaryAvailable
+          ? "Zwischenstand: " + readiness.completedBranchCount + "/" + branchTotal +
+            " Hauptzweige · " + readiness.doneCount + "/" + readiness.checks.length + " Teilanalysen abgeschlossen."
+          : "Zwischenbilanz noch gesperrt · " + readiness.doneCount + "/" + readiness.checks.length +
+            " Teilanalysen abgeschlossen. Schließe zuerst einen Hauptzweig vollständig ab.");
     }
   }
 
@@ -623,11 +658,29 @@
     }).join("");
   }
 
-  function componentCardHtml(cssClass, name, formula, status, note) {
+  function pubChemLinkHtml(substance) {
+    const ref = substance && substance.external_refs && substance.external_refs.pubchem;
+    if (!ref || !ref.url) return "";
+    const cid = Number(ref.cid);
+    const title = Number.isFinite(cid) ? "PubChem CID " + cid : "PubChem";
+    return '<a class="component-reference" href="' + escapeHtml(ref.url) +
+      '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(title) +
+      '">Stoff bei PubChem erkunden ↗</a>';
+  }
+
+  function componentCardHtml(cssClass, name, formula, status, note, substance) {
     return '<article class="component-card ' + cssClass + '"><div class="component-name">' +
       escapeHtml(name) + '</div><div class="component-formula">' + escapeHtml(formula || "") +
       '</div><span class="component-status">' + escapeHtml(status) +
-      '</span><div class="component-note">' + escapeHtml(note) + '</div></article>';
+      '</span><div class="component-note">' + escapeHtml(note) + '</div>' +
+      pubChemLinkHtml(substance) + '</article>';
+  }
+
+  function branchBadgeHtml(branch) {
+    if (!branch) return "";
+    const stateClass = branch.done ? "done" : (branch.started ? "active" : "pending");
+    const label = branch.done ? "abgeschlossen" : (branch.started ? "in Arbeit" : "noch offen");
+    return '<span class="branch-status ' + stateClass + '">' + label + '</span>';
   }
 
   function evidenceCardHtml(name, steps, verdict) {
@@ -656,112 +709,174 @@
         : null;
     }).filter(Boolean).join(" · ");
 
-    const ethylCross = state.results.some(function (r) {
+    const ethylCross = !!readiness.ethyl && state.results.some(function (r) {
       return r.analysis_type === "GC_CONFIRMATION" && r.sample_id === "VCOE01_F2" &&
         r.evaluation && r.evaluation.confirmed_substance_id === "ETHYL_ACETATE";
     });
-    const butanolCross = state.results.some(function (r) {
+    const butanolCross = !!readiness.butanol && state.results.some(function (r) {
       return r.analysis_type === "GC_CONFIRMATION" && r.sample_id === "VCOE01_F2" &&
         r.evaluation && r.evaluation.confirmed_substance_id === "BUTAN_1_OL";
     });
 
-    els.summaryStatusBadge.textContent = readiness.complete ? "Analyse abgeschlossen" : "Analyse noch unvollständig";
-    els.summaryCompletion.textContent = readiness.doneCount + "/" + readiness.checks.length + " Pflichtbefunde";
+    const branchById = {};
+    readiness.branches.forEach(function (branch) { branchById[branch.id] = branch; });
+
+    els.summaryTitle.textContent = readiness.complete ? "Gesamtübersicht der Analyse" : "Zwischenbilanz der Analyse";
+    els.summaryStatusBadge.textContent = readiness.complete
+      ? "Analyse abgeschlossen"
+      : "Zwischenbilanz · " + readiness.completedBranchCount + "/" + readiness.branches.length + " Zweige";
+    els.summaryCompletion.textContent =
+      readiness.completedBranchCount + "/" + readiness.branches.length + " Hauptzweige · " +
+      readiness.doneCount + "/" + readiness.checks.length + " Teilanalysen";
     els.summaryLead.textContent = readiness.complete
       ? "Die unbekannte heterogene Probe wurde getrennt und mit klassischen, spektroskopischen, chromatographischen und quantitativen Methoden untersucht. Die wesentlichen Identitäten sind durch unabhängige Beweisketten abgesichert."
-      : "Diese Ansicht fasst den bisherigen Stand zusammen; einzelne Pflichtbefunde fehlen noch.";
+      : "Diese Zwischenbilanz zeigt ausschließlich bereits gesicherte Befunde. Offene Analysezweige bleiben als Arbeitsstand sichtbar, ohne Stoffidentitäten vorwegzunehmen.";
 
     els.summaryRoutes.innerHTML =
-      '<article class="route-card inorganic"><h4>Anorganischer Zweig</h4><div class="route-steps">' +
+      '<article class="route-card inorganic"><div class="route-title-row"><h4>Anorganischer Zweig</h4>' +
+        branchBadgeHtml(branchById.inorganic) + '</div><div class="route-steps">' +
         routeStepsHtml([
           { done: !!readiness.ion, text: "Filterrückstand lösen und Teilproben herstellen" },
           { done: !!readiness.ion, text: "Cu²⁺ und SO₄²⁻ qualitativ nachweisen" },
           { done: !!readiness.phot, text: "Cu²⁺ als Amminkomplex photometrisch messen" },
           { done: !!copper, text: "Aus Eichdaten auf den ursprünglichen Feststoff zurückrechnen" }
         ]) + '</div></article>' +
-      '<article class="route-card volatile"><h4>Flüchtiger organischer Zweig</h4><div class="route-steps">' +
+      '<article class="route-card volatile"><div class="route-title-row"><h4>Flüchtiger organischer Zweig</h4>' +
+        branchBadgeHtml(branchById.volatile) + '</div><div class="route-steps">' +
         routeStepsHtml([
           { done: !!readiness.dist, text: "Organisches Filtrat fraktionierend destillieren" + (distQuality ? " · Qualität " + distQuality + "/5" : "") },
           { done: !!readiness.dist, text: "F1/F2/F3 gaschromatographisch untersuchen" + (fractionText ? " · " + fractionText : "") },
           { done: !!(readiness.ethyl && readiness.butanol), text: "Reinstoff-Fraktionen spektroskopisch strukturaufklären" },
           { done: !!(readiness.ethyl && readiness.butanol), text: "Identitäten mit Standard und Aufstockung bestätigen" }
         ]) + '</div></article>' +
-      '<article class="route-card solid"><h4>Nichtflüchtiger organischer Zweig</h4><div class="route-steps">' +
+      '<article class="route-card solid"><div class="route-title-row"><h4>Nichtflüchtiger organischer Zweig</h4>' +
+        branchBadgeHtml(branchById.solid) + '</div><div class="route-steps">' +
         routeStepsHtml([
           { done: !!readiness.screening, text: "Weißen Rückstand klassisch voranalysieren" },
           { done: !!readiness.solidStructure, text: "M/MS/IR/¹H-NMR zur Strukturhypothese verknüpfen" },
           { done: !!readiness.melting, text: "Referenz- und Mischschmelzpunkt zur Bestätigung nutzen" },
-          { done: !!readiness.quant, text: "Salicylsäure quantitativ mit NaOH titrieren" }
+          { done: !!readiness.quant, text: readiness.melting ? "Bestätigten Feststoff quantitativ mit NaOH titrieren" : "Feststoff nach bestätigter Identität quantitativ titrieren" }
         ]) + '</div></article>';
 
     const copperSalt = substanceMeta("COPPER_SULFATE_PENTAHYDRATE");
     const ethyl = substanceMeta("ETHYL_ACETATE");
     const butanol = substanceMeta("BUTAN_1_OL");
     const sal = substanceMeta("SALICYLIC_ACID");
-    els.summaryComponents.innerHTML =
-      componentCardHtml("inorganic", "Kupfer(II)-sulfat-Komponente", "Cu²⁺ / SO₄²⁻",
-        "qualitativ bestätigt",
-        "Cu²⁺ und Sulfat wurden unabhängig nachgewiesen; die Mengenbilanz wird im VCÖ-01-Fallmodell als " + copperSalt.formula + " geführt.") +
-      componentCardHtml("volatile", ethyl.name_de, ethyl.formula, "Identität bestätigt",
-        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." + (ethylCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : "")) +
-      componentCardHtml("volatile", butanol.name_de, butanol.formula, "Identität bestätigt",
-        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." + (butanolCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : "")) +
-      componentCardHtml("solid", sal.name_de, sal.formula, "Identität bestätigt",
-        "Klassische Voranalyse, Spektroskopie und unveränderter Mischschmelzpunkt bilden eine konsistente Beweiskette.");
+    const componentCards = [];
 
-    els.summaryEvidence.innerHTML =
-      evidenceCardHtml("Kupfer(II)-sulfat-Komponente",
-        ["Filtration", "Cu²⁺-Nachweis", "SO₄²⁻-Nachweis", "NH₃-Komplex", "UV/VIS-Eichung"],
-        "Ionenidentität bestätigt; quantitative Cu-Bestimmung aus den Photometerdaten möglich.") +
-      evidenceCardHtml(ethyl.name_de,
+    if (readiness.ion) {
+      componentCards.push(componentCardHtml("inorganic", "Kupfer(II)-sulfat-Komponente", "Cu²⁺ / SO₄²⁻",
+        copper ? "qualitativ bestätigt · quantifiziert" : "qualitativ bestätigt",
+        copper
+          ? "Cu²⁺ und Sulfat wurden unabhängig nachgewiesen; die Mengenbilanz wurde im VCÖ-01-Fallmodell als " + copperSalt.formula + " berechnet."
+          : "Cu²⁺ und Sulfat wurden unabhängig nachgewiesen; die quantitative Photometrie ist noch nicht abgeschlossen."));
+    }
+    if (readiness.ethyl) {
+      componentCards.push(componentCardHtml("volatile", ethyl.name_de, ethyl.formula, "Identität bestätigt",
+        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." +
+          (ethylCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : ""), ethyl));
+    }
+    if (readiness.butanol) {
+      componentCards.push(componentCardHtml("volatile", butanol.name_de, butanol.formula, "Identität bestätigt",
+        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." +
+          (butanolCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : ""), butanol));
+    }
+    if (readiness.melting) {
+      componentCards.push(componentCardHtml("solid", sal.name_de, sal.formula,
+        Number.isFinite(salMass) ? "Identität bestätigt · quantifiziert" : "Identität bestätigt",
+        "Klassische Voranalyse, Spektroskopie und unveränderter Mischschmelzpunkt bilden eine konsistente Beweiskette.", sal));
+    }
+    els.summaryComponents.innerHTML = componentCards.length
+      ? componentCards.join("")
+      : '<div class="summary-empty">Noch keine Stoffidentität ist durch die vorgesehene Beweiskette bestätigt.</div>';
+
+    const evidenceCards = [];
+    if (readiness.ion) {
+      const copperSteps = ["Filtration", "Cu²⁺-Nachweis", "SO₄²⁻-Nachweis"];
+      if (readiness.photEval) copperSteps.push("NH₃-Komplex", "UV/VIS-Eichung");
+      evidenceCards.push(evidenceCardHtml("Kupfer(II)-sulfat-Komponente", copperSteps,
+        readiness.photEval
+          ? "Ionenidentität bestätigt; quantitative Cu-Bestimmung aus den Photometerdaten abgeschlossen."
+          : "Ionenidentität bestätigt; quantitative Photometrie noch offen."));
+    }
+    if (readiness.ethyl) {
+      evidenceCards.push(evidenceCardHtml(ethyl.name_de,
         ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(ethylCross ? ["F2-Gegenprobe"] : []),
-        "Chromatographisch und spektroskopisch bestätigt.") +
-      evidenceCardHtml(butanol.name_de,
+        "Chromatographisch und spektroskopisch bestätigt."));
+    }
+    if (readiness.butanol) {
+      evidenceCards.push(evidenceCardHtml(butanol.name_de,
         ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(butanolCross ? ["F2-Gegenprobe"] : []),
-        "Chromatographisch und spektroskopisch bestätigt.") +
-      evidenceCardHtml(sal.name_de,
-        ["Feststoff-Voranalyse", "M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt", "Titration"],
-        "Identität unabhängig bestätigt und anschließend quantitativ bestimmt.");
+        "Chromatographisch und spektroskopisch bestätigt."));
+    }
+    if (readiness.melting) {
+      const salSteps = ["Feststoff-Voranalyse", "M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt"];
+      if (readiness.quant) salSteps.push("Titration");
+      evidenceCards.push(evidenceCardHtml(sal.name_de, salSteps,
+        readiness.quant ? "Identität unabhängig bestätigt und anschließend quantitativ bestimmt." : "Identität unabhängig bestätigt."));
+    }
+    els.summaryEvidence.innerHTML = evidenceCards.length
+      ? evidenceCards.join("")
+      : '<div class="summary-empty">Gesicherte Beweisketten erscheinen hier nach Abschluss der jeweiligen Bestätigung.</div>';
 
-    const copperQuantHtml = copper
-      ? '<article class="quant-card"><h4>Kupfer-Komponente</h4><div class="quant-main">' +
+    const quantCards = [];
+    if (copper) {
+      quantCards.push('<article class="quant-card"><h4>Kupfer-Komponente</h4><div class="quant-main">' +
         fmtSummary(copper.pentahydrateMassG, 3) + ' g <span class="small">als CuSO₄·5H₂O</span></div>' +
         '<div class="quant-sub"><span>c(Messlösung) = ' + fmtSummary(copper.measurementConcentration, 4) + ' mol·L⁻¹</span>' +
         '<span>c(Stocklösung) = ' + fmtSummary(copper.stockConcentration, 4) + ' mol·L⁻¹</span>' +
         '<span>n(Cu²⁺) = ' + fmtSummary(copper.amountMol * 1000, 3) + ' mmol</span>' +
-        '<span>Eichung: ' + copper.standardsCount + ' Standards · R² = ' + fmtSummary(copper.r2, 4) + '</span></div></article>'
-      : '<article class="quant-card"><h4>Kupfer-Komponente</h4><div class="quant-pending">Photometrische Messdaten liegen vor, aber eine belastbare Abschlussrechnung konnte aus den gespeicherten Rohdaten nicht erzeugt werden.</div></article>';
-
-    const salQuantHtml = Number.isFinite(salMass)
-      ? '<article class="quant-card"><h4>Salicylsäure</h4><div class="quant-main">' +
+        '<span>Eichung: ' + copper.standardsCount + ' Standards · R² = ' + fmtSummary(copper.r2, 4) + '</span></div></article>');
+    }
+    if (Number.isFinite(salMass)) {
+      quantCards.push('<article class="quant-card"><h4>Salicylsäure</h4><div class="quant-main">' +
         fmtSummary(salMass, 4) + ' g</div><div class="quant-sub"><span>V(ÄP1) = ' +
         fmtSummary(salVeq, 2) + ' mL</span><span>20,00-mL-Aliquot aus 100,0 mL Gesamtansatz</span>' +
-        '<span>Quantitative Rückrechnung im TITRATIONSTOOL abgeschlossen</span></div></article>'
-      : '<article class="quant-card"><h4>Salicylsäure</h4><div class="quant-pending">Quantitative Titration noch nicht vollständig als RESULT vorhanden.</div></article>';
+        '<span>Quantitative Rückrechnung im TITRATIONSTOOL abgeschlossen</span></div></article>');
+    }
+    if (readiness.ethyl || readiness.butanol) {
+      quantCards.push('<article class="quant-card"><h4>Flüchtige organische Komponenten</h4><div class="quant-pending"><strong>Bestätigte Identitäten, Mengen noch offen.</strong><br>Die bisherige GC dient der Trennung und Identitätsbestätigung. Eine quantitative GC-Kalibrierung ist noch nicht Teil der Stoffbilanz.</div></article>');
+    }
+    els.summaryQuant.innerHTML = quantCards.length
+      ? quantCards.join("")
+      : '<div class="summary-empty">Noch keine quantitative Bestimmung ist vollständig abgeschlossen.</div>';
 
-    els.summaryQuant.innerHTML = copperQuantHtml + salQuantHtml +
-      '<article class="quant-card"><h4>Ethylacetat + 1-Butanol</h4><div class="quant-pending"><strong>Identitäten bestätigt, Mengen noch offen.</strong><br>Die bisherige GC dient der Trennung und Identitätsbestätigung. Eine quantitative GC-Kalibrierung ist in VCÖ-01 v0.14 noch nicht Teil der Stoffbilanz.</div></article>';
-
+    const confirmedComponentCount =
+      (readiness.ion ? 1 : 0) + (readiness.ethyl ? 1 : 0) +
+      (readiness.butanol ? 1 : 0) + (readiness.melting ? 1 : 0);
     const quantitativeCount = (copper ? 1 : 0) + (Number.isFinite(salMass) ? 1 : 0);
     els.summaryAssessment.innerHTML =
-      '<div class="assessment-metric"><strong>4</strong><span>stoffliche Komponenten identifiziert / charakterisiert</span></div>' +
-      '<div class="assessment-metric"><strong>3</strong><span>Analysezweige vollständig bearbeitet</span></div>' +
-      '<div class="assessment-metric"><strong>' + quantitativeCount + '</strong><span>quantitative Bestimmungen verfügbar</span></div>' +
-      '<div class="assessment-metric"><strong>' + state.results.length + '</strong><span>digitale RESULT-Objekte im Falljournal</span></div>';
+      '<div class="assessment-metric"><strong>' + confirmedComponentCount + '</strong><span>gesicherte stoffliche Komponenten</span></div>' +
+      '<div class="assessment-metric"><strong>' + readiness.completedBranchCount + '/3</strong><span>Hauptzweige vollständig bearbeitet</span></div>' +
+      '<div class="assessment-metric"><strong>' + readiness.doneCount + '/' + readiness.checks.length + '</strong><span>Teilanalysen abgeschlossen</span></div>' +
+      '<div class="assessment-metric"><strong>' + quantitativeCount + '</strong><span>quantitative Bestimmungen verfügbar</span></div>';
 
-    const copperText = copper
-      ? "Für die Kupfer-Komponente ergibt die Abschlussrechnung aus der UV/VIS-Eichung etwa " +
-        fmtSummary(copper.pentahydrateMassG, 3) + " g, bilanziert als CuSO₄·5H₂O im Fallmodell."
-      : "Die Kupfer-Komponente wurde qualitativ bestätigt und photometrisch vermessen.";
-    const salText = Number.isFinite(salMass)
-      ? "Die Salicylsäure wurde nach spektroskopischer und physikalischer Bestätigung mit " +
-        fmtSummary(salMass, 4) + " g quantitativ bestimmt."
-      : "Die Salicylsäure wurde qualitativ bestätigt.";
-
-    els.summaryReportText.textContent =
-      "Die unbekannte heterogene Probe wurde zunächst durch Filtration in einen anorganischen Feststoffanteil und ein organisches Filtrat getrennt. " +
-      copperText + " Das organische Filtrat wurde fraktionierend destilliert. Gaschromatographie, M/MS/IR/¹H-NMR, gezielte Referenzstandards und Aufstockungen bestätigten Ethylacetat und 1-Butanol als flüchtige Komponenten. " +
-      salText + " Damit sind die wesentlichen Stoffidentitäten des Falls durch voneinander unabhängige analytische Belege abgesichert. Eine vollständige quantitative Gesamtbilanz der beiden flüchtigen Lösungsmittel bleibt einer späteren quantitativen GC-Erweiterung vorbehalten.";
+    const reportParts = [
+      "Die unbekannte heterogene Probe wurde zunächst durch Filtration in einen anorganischen Feststoffanteil und ein organisches Filtrat getrennt."
+    ];
+    if (readiness.ion) {
+      reportParts.push(copper
+        ? "Im anorganischen Zweig wurden Cu²⁺ und SO₄²⁻ bestätigt; aus der UV/VIS-Eichung ergibt sich eine Bilanz von etwa " +
+          fmtSummary(copper.pentahydrateMassG, 3) + " g als CuSO₄·5H₂O im Fallmodell."
+        : "Im anorganischen Zweig wurden Cu²⁺ und SO₄²⁻ qualitativ bestätigt.");
+    }
+    const volatileNames = [];
+    if (readiness.ethyl) volatileNames.push(ethyl.name_de);
+    if (readiness.butanol) volatileNames.push(butanol.name_de);
+    if (volatileNames.length) {
+      reportParts.push("Im flüchtigen organischen Zweig wurden " + volatileNames.join(" und ") +
+        " durch GC, Strukturaufklärung, Referenzstandard und Aufstockung bestätigt.");
+    }
+    if (readiness.melting) {
+      reportParts.push(Number.isFinite(salMass)
+        ? "Der nichtflüchtige Feststoff wurde als Salicylsäure bestätigt und anschließend mit " +
+          fmtSummary(salMass, 4) + " g quantitativ bestimmt."
+        : "Der nichtflüchtige Feststoff wurde durch Voranalyse, Spektroskopie und Mischschmelzpunkt als Salicylsäure bestätigt.");
+    }
+    reportParts.push(readiness.complete
+      ? "Damit sind die wesentlichen Stoffidentitäten des Falls durch voneinander unabhängige analytische Belege abgesichert. Eine vollständige quantitative Gesamtbilanz der beiden flüchtigen Lösungsmittel bleibt einer späteren quantitativen GC-Erweiterung vorbehalten."
+      : "Diese Zwischenbilanz enthält bewusst nur bereits bestätigte Befunde; die übrigen Analysezweige und offenen Pflichtbefunde werden nach ihrem Abschluss ergänzt.");
+    els.summaryReportText.textContent = reportParts.join(" ");
   }
 
   function render() {
