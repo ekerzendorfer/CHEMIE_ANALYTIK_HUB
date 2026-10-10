@@ -13,20 +13,23 @@
       <div>
         <p class="eyebrow">CHEMIE mit KI</p>
         <h1>Digitales Analytiklabor</h1>
-        <p class="subtitle">Test-Hub v0.13 · Proben vorbereiten, Analysewege planen, Ergebnisse vernetzen</p>
+        <p class="subtitle">Test-Hub v0.14 · Proben vorbereiten, Analysewege planen, Ergebnisse vernetzen</p>
       </div>
       <div class="version-badge" id="schemaBadge">CORE …</div>
     </div>
   </header>
 
-  <main class="wrap layout">
+  <main id="workArea" class="wrap layout">
     <section class="card intro" aria-labelledby="caseTitle">
       <div class="section-head">
         <div>
           <p class="kicker">Aktiver Fall</p>
           <h2 id="caseTitle">Lade Daten …</h2>
         </div>
-        <button class="ghost" id="resetBtn" type="button">Fall zurücksetzen</button>
+        <div class="case-head-actions">
+          <button class="summary-open-btn" id="summaryOpenBtn" type="button" disabled>Fall abschließen</button>
+          <button class="ghost" id="resetBtn" type="button">Fall zurücksetzen</button>
+        </div>
       </div>
       <p id="caseDescription" class="muted"></p>
       <div class="mode-row">
@@ -81,10 +84,79 @@
     </section>
   </main>
 
+  <main id="caseSummary" class="wrap case-summary hidden" aria-labelledby="summaryTitle">
+    <section class="summary-hero">
+      <div>
+        <p class="kicker">VCÖ-01 · Abschluss</p>
+        <h2 id="summaryTitle">Gesamtübersicht der Analyse</h2>
+        <p id="summaryLead" class="summary-lead"></p>
+      </div>
+      <div class="summary-hero-actions">
+        <span id="summaryStatusBadge" class="summary-status-badge"></span>
+        <button id="summaryBackBtn" class="summary-back-btn" type="button">Zurück zum Arbeitsbereich</button>
+      </div>
+    </section>
+
+    <section class="summary-section">
+      <div class="summary-section-head">
+        <div>
+          <p class="kicker">Analytische Route</p>
+          <h3>Vom unbekannten Gemisch zu belastbaren Ergebnissen</h3>
+        </div>
+        <span id="summaryCompletion" class="summary-completion"></span>
+      </div>
+      <div id="summaryRoutes" class="summary-routes"></div>
+    </section>
+
+    <section class="summary-section">
+      <div class="summary-section-head">
+        <div>
+          <p class="kicker">Identifizierte Bestandteile</p>
+          <h3>Was wurde in der Probe nachgewiesen?</h3>
+        </div>
+      </div>
+      <div id="summaryComponents" class="summary-components"></div>
+    </section>
+
+    <section class="summary-section">
+      <div class="summary-section-head">
+        <div>
+          <p class="kicker">Beweisketten</p>
+          <h3>Warum gelten die Identitäten als bestätigt?</h3>
+        </div>
+      </div>
+      <div id="summaryEvidence" class="summary-evidence"></div>
+    </section>
+
+    <section class="summary-section">
+      <div class="summary-section-head">
+        <div>
+          <p class="kicker">Quantitative Ergebnisse</p>
+          <h3>Welche Mengen wurden bestimmt?</h3>
+        </div>
+      </div>
+      <div id="summaryQuant" class="summary-quant"></div>
+    </section>
+
+    <section class="summary-section summary-conclusion">
+      <div class="summary-section-head">
+        <div>
+          <p class="kicker">Abschließende Bewertung</p>
+          <h3>Der Analysefall als Ganzes</h3>
+        </div>
+      </div>
+      <div id="summaryAssessment" class="summary-assessment"></div>
+      <div class="summary-report">
+        <h4>Protokollhilfe · Kurzfassung</h4>
+        <p id="summaryReportText"></p>
+      </div>
+    </section>
+  </main>
+
   <footer class="footer">
     <div class="wrap">
-      <strong>CHEMIE_ANALYTIK_HUB v0.13</strong>
-      <span> · VCÖ-01 kann jetzt bis zur quantitativen Salicylsäurebestimmung abgeschlossen werden.</span>
+      <strong>CHEMIE_ANALYTIK_HUB v0.14</strong>
+      <span> · VCÖ-01 erhält eine fallübergreifende Abschlussansicht mit Beweisketten und quantitativen Ergebnissen.</span>
     </div>
   </footer>
 

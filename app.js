@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.13.0";
+  const HUB_VERSION = "0.14.0";
 
   const els = {};
   let db = null;
@@ -34,7 +34,10 @@
     [
       "schemaBadge", "caseTitle", "caseDescription", "sampleTree", "detailTitle",
       "sampleMeta", "actions", "actionHint", "journal", "validatorSummary",
-      "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance"
+      "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance", "workArea",
+      "summaryOpenBtn", "caseSummary", "summaryBackBtn", "summaryTitle", "summaryLead",
+      "summaryStatusBadge", "summaryCompletion", "summaryRoutes", "summaryComponents",
+      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
@@ -51,6 +54,21 @@
       els.validatorDetails.classList.toggle("hidden");
       els.toggleDiag.textContent = els.validatorDetails.classList.contains("hidden")
         ? "Details anzeigen" : "Details ausblenden";
+    });
+
+    els.summaryOpenBtn.addEventListener("click", function () {
+      const readiness = caseSummaryReadiness();
+      if (!readiness.complete) return;
+      renderCaseSummary(readiness);
+      els.workArea.classList.add("hidden");
+      els.caseSummary.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    els.summaryBackBtn.addEventListener("click", function () {
+      els.caseSummary.classList.add("hidden");
+      els.workArea.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
 
@@ -390,6 +408,323 @@
 
 
 
+  function latestCaseResult(analysisType, predicate) {
+    const matches = state.results.filter(function (r) {
+      return r.analysis_type === analysisType &&
+        r.status === "completed" &&
+        (!predicate || predicate(r));
+    });
+    return matches.length ? matches[matches.length - 1] : null;
+  }
+
+  function confirmationForSummary(substanceId, preferredSampleId) {
+    const matches = state.results.filter(function (r) {
+      return r.analysis_type === "GC_CONFIRMATION" &&
+        r.status === "completed" &&
+        r.evaluation && r.evaluation.identity_status === "confirmed" &&
+        r.evaluation.confirmed_substance_id === substanceId;
+    });
+    if (!matches.length) return null;
+    if (preferredSampleId) {
+      const preferred = matches.filter(function (r) { return r.sample_id === preferredSampleId; });
+      if (preferred.length) return preferred[preferred.length - 1];
+    }
+    return matches[matches.length - 1];
+  }
+
+  function caseSummaryReadiness() {
+    const ion = latestCaseResult("QUALITATIVE_ION_ANALYSIS", function (r) {
+      const identified = r.evaluation && r.evaluation.identified || {};
+      return identified.cation === "Cu2+" && identified.anion === "SO4 2-";
+    });
+    const phot = latestCaseResult("UVVIS_CALIBRATION");
+    const dist = latestCaseResult("FRACTIONAL_DISTILLATION");
+    const ethyl = confirmationForSummary("ETHYL_ACETATE", "VCOE01_F1");
+    const butanol = confirmationForSummary("BUTAN_1_OL", "VCOE01_F3");
+    const screening = latestCaseResult("ORGANIC_SOLID_SCREENING", function (r) {
+      return r.sample_id === "VCOE01_RESIDUE_SOLID";
+    });
+    const solidStructure = screening ? latestCaseResult("STRUCTURE_ELUCIDATION", function (r) {
+      return r.source_result_id === screening.result_id &&
+        r.evaluation && r.evaluation.identity_status === "supported";
+    }) : null;
+    const melting = solidStructure ? latestCaseResult("MELTING_POINT_CONFIRMATION", function (r) {
+      return r.source_result_id === solidStructure.result_id &&
+        r.evaluation && r.evaluation.identity_status === "confirmed";
+    }) : null;
+    const quant = melting ? latestCaseResult("ACID_BASE_TITRATION_QUANT", function (r) {
+      return r.source_result_id === melting.result_id &&
+        r.evaluation && r.evaluation.quantification_status === "completed";
+    }) : null;
+
+    const checks = [
+      { id: "ion", label: "Cu²⁺ / SO₄²⁻ qualitativ bestätigt", done: !!ion },
+      { id: "phot", label: "Photometrische Eichmessung abgeschlossen", done: !!phot },
+      { id: "dist", label: "Fraktionierende Destillation abgeschlossen", done: !!dist },
+      { id: "ethyl", label: "Ethylacetat chromatographisch bestätigt", done: !!ethyl },
+      { id: "butanol", label: "1-Butanol chromatographisch bestätigt", done: !!butanol },
+      { id: "screening", label: "Organische Feststoff-Voranalyse abgeschlossen", done: !!screening },
+      { id: "solidStructure", label: "Feststoffstruktur spektroskopisch gestützt", done: !!solidStructure },
+      { id: "melting", label: "Salicylsäure physikalisch bestätigt", done: !!melting },
+      { id: "quant", label: "Salicylsäure quantitativ bestimmt", done: !!quant }
+    ];
+
+    return {
+      checks: checks,
+      doneCount: checks.filter(function (x) { return x.done; }).length,
+      complete: checks.every(function (x) { return x.done; }),
+      ion: ion,
+      phot: phot,
+      dist: dist,
+      ethyl: ethyl,
+      butanol: butanol,
+      screening: screening,
+      solidStructure: solidStructure,
+      melting: melting,
+      quant: quant
+    };
+  }
+
+  function renderSummaryAvailability() {
+    if (!els.summaryOpenBtn) return;
+    const readiness = caseSummaryReadiness();
+    els.summaryOpenBtn.disabled = !readiness.complete;
+    els.summaryOpenBtn.textContent = readiness.complete
+      ? "Fall abschließen"
+      : "Fall abschließen · " + readiness.doneCount + "/" + readiness.checks.length;
+    const missing = readiness.checks.filter(function (x) { return !x.done; }).map(function (x) { return x.label; });
+    els.summaryOpenBtn.title = readiness.complete
+      ? "Alle Pflichtketten sind abgeschlossen."
+      : "Noch offen: " + missing.join(" · ");
+  }
+
+  function linearRegression(points) {
+    if (!Array.isArray(points) || points.length < 2) return null;
+    const n = points.length;
+    const sx = points.reduce(function (s, p) { return s + p.x; }, 0);
+    const sy = points.reduce(function (s, p) { return s + p.y; }, 0);
+    const sxx = points.reduce(function (s, p) { return s + p.x * p.x; }, 0);
+    const sxy = points.reduce(function (s, p) { return s + p.x * p.y; }, 0);
+    const denom = n * sxx - sx * sx;
+    if (!Number.isFinite(denom) || Math.abs(denom) < 1e-18) return null;
+    const slope = (n * sxy - sx * sy) / denom;
+    const intercept = (sy - slope * sx) / n;
+    const meanY = sy / n;
+    const ssTot = points.reduce(function (s, p) { return s + Math.pow(p.y - meanY, 2); }, 0);
+    const ssRes = points.reduce(function (s, p) {
+      return s + Math.pow(p.y - (slope * p.x + intercept), 2);
+    }, 0);
+    const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 1;
+    return { slope: slope, intercept: intercept, r2: r2 };
+  }
+
+  function copperQuantSummary(photResult) {
+    if (!photResult || !photResult.measurement) return null;
+    const m = photResult.measurement;
+    const standards = (m.standard_measurements || []).map(function (r) {
+      return { x: Number(r.concentration_mol_l), y: Number(r.absorbance) };
+    }).filter(function (p) { return Number.isFinite(p.x) && Number.isFinite(p.y); });
+    const unknownValues = (m.unknown_measurements || []).map(function (r) {
+      return Number(r.absorbance);
+    }).filter(Number.isFinite);
+    const regression = linearRegression(standards);
+    if (!regression || !unknownValues.length || Math.abs(regression.slope) < 1e-12) return null;
+
+    const unknownAbsorbance = unknownValues.reduce(function (s, v) { return s + v; }, 0) / unknownValues.length;
+    const measurementConcentration = (unknownAbsorbance - regression.intercept) / regression.slope;
+    if (!Number.isFinite(measurementConcentration) || measurementConcentration <= 0) return null;
+
+    const measuringSample = db.samples.find(function (s) { return s.id === "VCOE01_PHOT_AMMINE"; });
+    const stockSample = db.samples.find(function (s) { return s.id === "VCOE01_SOLID_AQ"; });
+    const prep = measuringSample && measuringSample.preparation_internal || {};
+    const stockPrep = stockSample && stockSample.preparation_internal || {};
+    const dilution = Number(prep.dilution_factor) ||
+      (Number(prep.final_volume_ml) && Number(prep.aliquot_volume_ml)
+        ? Number(prep.final_volume_ml) / Number(prep.aliquot_volume_ml) : NaN);
+    const stockVolumeMl = Number(stockPrep.dissolved_to_volume_ml);
+    const copperSalt = db.substances.find(function (s) { return s.id === "COPPER_SULFATE_PENTAHYDRATE"; });
+    const molarMass = copperSalt && Number(copperSalt.molar_mass_g_mol);
+
+    if (![dilution, stockVolumeMl, molarMass].every(Number.isFinite)) return null;
+    const stockConcentration = measurementConcentration * dilution;
+    const amountMol = stockConcentration * stockVolumeMl / 1000;
+    const pentahydrateMassG = amountMol * molarMass;
+
+    return {
+      wavelengthNm: Number(m.wavelength_nm),
+      standardsCount: standards.length,
+      unknownAbsorbance: unknownAbsorbance,
+      slope: regression.slope,
+      intercept: regression.intercept,
+      r2: regression.r2,
+      measurementConcentration: measurementConcentration,
+      stockConcentration: stockConcentration,
+      amountMol: amountMol,
+      pentahydrateMassG: pentahydrateMassG
+    };
+  }
+
+  function fmtSummary(value, digits) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return "–";
+    return n.toLocaleString("de-AT", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
+  function substanceMeta(id) {
+    return db.substances.find(function (s) { return s.id === id; }) || { id: id, name_de: id, formula: "" };
+  }
+
+  function routeStepsHtml(steps) {
+    return steps.map(function (step) {
+      return '<div class="route-step ' + (step.done ? "done" : "") + '"><i>' +
+        (step.done ? "✓" : "·") + '</i><span>' + escapeHtml(step.text) + '</span></div>';
+    }).join("");
+  }
+
+  function componentCardHtml(cssClass, name, formula, status, note) {
+    return '<article class="component-card ' + cssClass + '"><div class="component-name">' +
+      escapeHtml(name) + '</div><div class="component-formula">' + escapeHtml(formula || "") +
+      '</div><span class="component-status">' + escapeHtml(status) +
+      '</span><div class="component-note">' + escapeHtml(note) + '</div></article>';
+  }
+
+  function evidenceCardHtml(name, steps, verdict) {
+    const chain = steps.map(function (step, index) {
+      return (index ? '<span class="evidence-arrow">→</span>' : "") +
+        '<span class="evidence-chip">' + escapeHtml(step) + '</span>';
+    }).join("");
+    return '<article class="evidence-card"><h4>' + escapeHtml(name) + '</h4><div class="evidence-chain">' +
+      chain + '</div><div class="evidence-verdict">' + escapeHtml(verdict) + '</div></article>';
+  }
+
+  function renderCaseSummary(readiness) {
+    readiness = readiness || caseSummaryReadiness();
+    const copper = copperQuantSummary(readiness.phot);
+    const salMass = readiness.quant && readiness.quant.evaluation
+      ? Number(readiness.quant.evaluation.analyte_mass_g) : NaN;
+    const salVeq = readiness.quant && readiness.quant.measurement
+      ? Number(readiness.quant.measurement.equivalence_volume_ml) : NaN;
+    const distQuality = readiness.dist && readiness.dist.evaluation
+      ? readiness.dist.evaluation.quality_score : null;
+    const fractionIds = ["VCOE01_F1", "VCOE01_F2", "VCOE01_F3"];
+    const fractionText = fractionIds.map(function (id) {
+      const runtime = state.runtimeSamples[id];
+      return runtime && Number.isFinite(Number(runtime.volume_ml))
+        ? id.replace("VCOE01_", "") + " " + fmtSummary(runtime.volume_ml, 1) + " mL"
+        : null;
+    }).filter(Boolean).join(" · ");
+
+    const ethylCross = state.results.some(function (r) {
+      return r.analysis_type === "GC_CONFIRMATION" && r.sample_id === "VCOE01_F2" &&
+        r.evaluation && r.evaluation.confirmed_substance_id === "ETHYL_ACETATE";
+    });
+    const butanolCross = state.results.some(function (r) {
+      return r.analysis_type === "GC_CONFIRMATION" && r.sample_id === "VCOE01_F2" &&
+        r.evaluation && r.evaluation.confirmed_substance_id === "BUTAN_1_OL";
+    });
+
+    els.summaryStatusBadge.textContent = readiness.complete ? "Analyse abgeschlossen" : "Analyse noch unvollständig";
+    els.summaryCompletion.textContent = readiness.doneCount + "/" + readiness.checks.length + " Pflichtbefunde";
+    els.summaryLead.textContent = readiness.complete
+      ? "Die unbekannte heterogene Probe wurde getrennt und mit klassischen, spektroskopischen, chromatographischen und quantitativen Methoden untersucht. Die wesentlichen Identitäten sind durch unabhängige Beweisketten abgesichert."
+      : "Diese Ansicht fasst den bisherigen Stand zusammen; einzelne Pflichtbefunde fehlen noch.";
+
+    els.summaryRoutes.innerHTML =
+      '<article class="route-card inorganic"><h4>Anorganischer Zweig</h4><div class="route-steps">' +
+        routeStepsHtml([
+          { done: !!readiness.ion, text: "Filterrückstand lösen und Teilproben herstellen" },
+          { done: !!readiness.ion, text: "Cu²⁺ und SO₄²⁻ qualitativ nachweisen" },
+          { done: !!readiness.phot, text: "Cu²⁺ als Amminkomplex photometrisch messen" },
+          { done: !!copper, text: "Aus Eichdaten auf den ursprünglichen Feststoff zurückrechnen" }
+        ]) + '</div></article>' +
+      '<article class="route-card volatile"><h4>Flüchtiger organischer Zweig</h4><div class="route-steps">' +
+        routeStepsHtml([
+          { done: !!readiness.dist, text: "Organisches Filtrat fraktionierend destillieren" + (distQuality ? " · Qualität " + distQuality + "/5" : "") },
+          { done: !!readiness.dist, text: "F1/F2/F3 gaschromatographisch untersuchen" + (fractionText ? " · " + fractionText : "") },
+          { done: !!(readiness.ethyl && readiness.butanol), text: "Reinstoff-Fraktionen spektroskopisch strukturaufklären" },
+          { done: !!(readiness.ethyl && readiness.butanol), text: "Identitäten mit Standard und Aufstockung bestätigen" }
+        ]) + '</div></article>' +
+      '<article class="route-card solid"><h4>Nichtflüchtiger organischer Zweig</h4><div class="route-steps">' +
+        routeStepsHtml([
+          { done: !!readiness.screening, text: "Weißen Rückstand klassisch voranalysieren" },
+          { done: !!readiness.solidStructure, text: "M/MS/IR/¹H-NMR zur Strukturhypothese verknüpfen" },
+          { done: !!readiness.melting, text: "Referenz- und Mischschmelzpunkt zur Bestätigung nutzen" },
+          { done: !!readiness.quant, text: "Salicylsäure quantitativ mit NaOH titrieren" }
+        ]) + '</div></article>';
+
+    const copperSalt = substanceMeta("COPPER_SULFATE_PENTAHYDRATE");
+    const ethyl = substanceMeta("ETHYL_ACETATE");
+    const butanol = substanceMeta("BUTAN_1_OL");
+    const sal = substanceMeta("SALICYLIC_ACID");
+    els.summaryComponents.innerHTML =
+      componentCardHtml("inorganic", "Kupfer(II)-sulfat-Komponente", "Cu²⁺ / SO₄²⁻",
+        "qualitativ bestätigt",
+        "Cu²⁺ und Sulfat wurden unabhängig nachgewiesen; die Mengenbilanz wird im VCÖ-01-Fallmodell als " + copperSalt.formula + " geführt.") +
+      componentCardHtml("volatile", ethyl.name_de, ethyl.formula, "Identität bestätigt",
+        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." + (ethylCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : "")) +
+      componentCardHtml("volatile", butanol.name_de, butanol.formula, "Identität bestätigt",
+        "GC-Trennung, Strukturaufklärung sowie Referenzstandard und Aufstockung stimmen überein." + (butanolCross ? " Zusätzlich in der Übergangsfraktion bestätigt." : "")) +
+      componentCardHtml("solid", sal.name_de, sal.formula, "Identität bestätigt",
+        "Klassische Voranalyse, Spektroskopie und unveränderter Mischschmelzpunkt bilden eine konsistente Beweiskette.");
+
+    els.summaryEvidence.innerHTML =
+      evidenceCardHtml("Kupfer(II)-sulfat-Komponente",
+        ["Filtration", "Cu²⁺-Nachweis", "SO₄²⁻-Nachweis", "NH₃-Komplex", "UV/VIS-Eichung"],
+        "Ionenidentität bestätigt; quantitative Cu-Bestimmung aus den Photometerdaten möglich.") +
+      evidenceCardHtml(ethyl.name_de,
+        ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(ethylCross ? ["F2-Gegenprobe"] : []),
+        "Chromatographisch und spektroskopisch bestätigt.") +
+      evidenceCardHtml(butanol.name_de,
+        ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(butanolCross ? ["F2-Gegenprobe"] : []),
+        "Chromatographisch und spektroskopisch bestätigt.") +
+      evidenceCardHtml(sal.name_de,
+        ["Feststoff-Voranalyse", "M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt", "Titration"],
+        "Identität unabhängig bestätigt und anschließend quantitativ bestimmt.");
+
+    const copperQuantHtml = copper
+      ? '<article class="quant-card"><h4>Kupfer-Komponente</h4><div class="quant-main">' +
+        fmtSummary(copper.pentahydrateMassG, 3) + ' g <span class="small">als CuSO₄·5H₂O</span></div>' +
+        '<div class="quant-sub"><span>c(Messlösung) = ' + fmtSummary(copper.measurementConcentration, 4) + ' mol·L⁻¹</span>' +
+        '<span>c(Stocklösung) = ' + fmtSummary(copper.stockConcentration, 4) + ' mol·L⁻¹</span>' +
+        '<span>n(Cu²⁺) = ' + fmtSummary(copper.amountMol * 1000, 3) + ' mmol</span>' +
+        '<span>Eichung: ' + copper.standardsCount + ' Standards · R² = ' + fmtSummary(copper.r2, 4) + '</span></div></article>'
+      : '<article class="quant-card"><h4>Kupfer-Komponente</h4><div class="quant-pending">Photometrische Messdaten liegen vor, aber eine belastbare Abschlussrechnung konnte aus den gespeicherten Rohdaten nicht erzeugt werden.</div></article>';
+
+    const salQuantHtml = Number.isFinite(salMass)
+      ? '<article class="quant-card"><h4>Salicylsäure</h4><div class="quant-main">' +
+        fmtSummary(salMass, 4) + ' g</div><div class="quant-sub"><span>V(ÄP1) = ' +
+        fmtSummary(salVeq, 2) + ' mL</span><span>20,00-mL-Aliquot aus 100,0 mL Gesamtansatz</span>' +
+        '<span>Quantitative Rückrechnung im TITRATIONSTOOL abgeschlossen</span></div></article>'
+      : '<article class="quant-card"><h4>Salicylsäure</h4><div class="quant-pending">Quantitative Titration noch nicht vollständig als RESULT vorhanden.</div></article>';
+
+    els.summaryQuant.innerHTML = copperQuantHtml + salQuantHtml +
+      '<article class="quant-card"><h4>Ethylacetat + 1-Butanol</h4><div class="quant-pending"><strong>Identitäten bestätigt, Mengen noch offen.</strong><br>Die bisherige GC dient der Trennung und Identitätsbestätigung. Eine quantitative GC-Kalibrierung ist in VCÖ-01 v0.14 noch nicht Teil der Stoffbilanz.</div></article>';
+
+    const quantitativeCount = (copper ? 1 : 0) + (Number.isFinite(salMass) ? 1 : 0);
+    els.summaryAssessment.innerHTML =
+      '<div class="assessment-metric"><strong>4</strong><span>stoffliche Komponenten identifiziert / charakterisiert</span></div>' +
+      '<div class="assessment-metric"><strong>3</strong><span>Analysezweige vollständig bearbeitet</span></div>' +
+      '<div class="assessment-metric"><strong>' + quantitativeCount + '</strong><span>quantitative Bestimmungen verfügbar</span></div>' +
+      '<div class="assessment-metric"><strong>' + state.results.length + '</strong><span>digitale RESULT-Objekte im Falljournal</span></div>';
+
+    const copperText = copper
+      ? "Für die Kupfer-Komponente ergibt die Abschlussrechnung aus der UV/VIS-Eichung etwa " +
+        fmtSummary(copper.pentahydrateMassG, 3) + " g, bilanziert als CuSO₄·5H₂O im Fallmodell."
+      : "Die Kupfer-Komponente wurde qualitativ bestätigt und photometrisch vermessen.";
+    const salText = Number.isFinite(salMass)
+      ? "Die Salicylsäure wurde nach spektroskopischer und physikalischer Bestätigung mit " +
+        fmtSummary(salMass, 4) + " g quantitativ bestimmt."
+      : "Die Salicylsäure wurde qualitativ bestätigt.";
+
+    els.summaryReportText.textContent =
+      "Die unbekannte heterogene Probe wurde zunächst durch Filtration in einen anorganischen Feststoffanteil und ein organisches Filtrat getrennt. " +
+      copperText + " Das organische Filtrat wurde fraktionierend destilliert. Gaschromatographie, M/MS/IR/¹H-NMR, gezielte Referenzstandards und Aufstockungen bestätigten Ethylacetat und 1-Butanol als flüchtige Komponenten. " +
+      salText + " Damit sind die wesentlichen Stoffidentitäten des Falls durch voneinander unabhängige analytische Belege abgesichert. Eine vollständige quantitative Gesamtbilanz der beiden flüchtigen Lösungsmittel bleibt einer späteren quantitativen GC-Erweiterung vorbehalten.";
+  }
+
   function render() {
     els.schemaBadge.textContent = "CORE " + db.schemaVersion + " · Bridge " + (window.AnalytikBridge ? window.AnalytikBridge.version : "–");
     els.caseTitle.textContent = db.case.name_de;
@@ -398,6 +733,7 @@
     renderDetail();
     renderJournal();
     renderValidator();
+    renderSummaryAvailability();
   }
 
   function renderTree() {
