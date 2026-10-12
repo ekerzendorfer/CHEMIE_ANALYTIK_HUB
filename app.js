@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.17.0";
+  const HUB_VERSION = "0.17.1";
 
   const els = {};
   let db = null;
@@ -38,7 +38,7 @@
       "summaryOpenBtn", "caseSummary", "summaryBackBtn", "summaryTitle", "summaryLead",
       "summaryStatusBadge", "summaryCompletion", "summaryRoutes", "summaryComponents",
       "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText", "summaryMissing",
-      "guidedModeBtn", "expertModeBtn", "actionsTitle"
+      "guidedModeBtn", "expertModeBtn", "actionsTitle", "summarySaveBtn", "summaryPrintBtn"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
@@ -80,6 +80,14 @@
       els.caseSummary.classList.add("hidden");
       els.workArea.classList.remove("hidden");
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    els.summarySaveBtn.addEventListener("click", function () {
+      saveSummaryMarkdown();
+    });
+
+    els.summaryPrintBtn.addEventListener("click", function () {
+      window.print();
     });
   }
 
@@ -917,6 +925,135 @@
       : "Diese Zwischenbilanz enthält bewusst nur bereits bestätigte Befunde; die übrigen Analysezweige und offenen Pflichtbefunde werden nach ihrem Abschluss ergänzt.");
     els.summaryReportText.textContent = reportParts.join(" ");
   }
+
+  function summaryText(node) {
+    return node ? String(node.textContent || "").replace(/\s+/g, " ").trim() : "";
+  }
+
+  function summaryFileDate() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
+  }
+
+  function summaryMarkdown() {
+    const readiness = caseSummaryReadiness();
+    renderCaseSummary(readiness);
+
+    const lines = [];
+    lines.push("# VCÖ-01 · " + summaryText(els.summaryTitle));
+    lines.push("");
+    lines.push("- **Status:** " + summaryText(els.summaryStatusBadge));
+    lines.push("- **Arbeitsmodus:** " + (isExpertMode() ? "Expert" : "Geführt"));
+    lines.push("- **Stand:** " + summaryText(els.summaryCompletion));
+    lines.push("- **Export:** " + new Date().toLocaleString("de-AT"));
+    lines.push("- **Hub-Version:** " + HUB_VERSION);
+    lines.push("");
+    lines.push(summaryText(els.summaryLead));
+    lines.push("");
+
+    lines.push("## Analytische Route");
+    els.summaryRoutes.querySelectorAll(".route-card").forEach(function (card) {
+      const title = summaryText(card.querySelector("h4"));
+      const status = summaryText(card.querySelector(".branch-status"));
+      lines.push("");
+      lines.push("### " + title + (status ? " · " + status : ""));
+      card.querySelectorAll(".route-step").forEach(function (step) {
+        const done = step.classList.contains("done");
+        lines.push("- [" + (done ? "x" : " ") + "] " + summaryText(step.querySelector("span")));
+      });
+    });
+    lines.push("");
+
+    lines.push("## Identifizierte Bestandteile");
+    const componentCards = els.summaryComponents.querySelectorAll(".component-card");
+    if (!componentCards.length) {
+      lines.push(summaryText(els.summaryComponents));
+    } else {
+      componentCards.forEach(function (card) {
+        lines.push("");
+        lines.push("### " + summaryText(card.querySelector(".component-name")));
+        const formula = summaryText(card.querySelector(".component-formula"));
+        const status = summaryText(card.querySelector(".component-status"));
+        const note = summaryText(card.querySelector(".component-note"));
+        if (formula) lines.push("- **Formel:** " + formula);
+        if (status) lines.push("- **Status:** " + status);
+        if (note) lines.push("- **Einordnung:** " + note);
+        const link = card.querySelector(".component-reference");
+        if (link && link.href) lines.push("- **Referenz:** " + link.href);
+      });
+    }
+    lines.push("");
+
+    lines.push("## Beweisketten");
+    const evidenceCards = els.summaryEvidence.querySelectorAll(".evidence-card");
+    if (!evidenceCards.length) {
+      lines.push(summaryText(els.summaryEvidence));
+    } else {
+      evidenceCards.forEach(function (card) {
+        lines.push("");
+        lines.push("### " + summaryText(card.querySelector("h4")));
+        const steps = Array.from(card.querySelectorAll(".evidence-chip")).map(summaryText).filter(Boolean);
+        if (steps.length) lines.push("- **Kette:** " + steps.join(" → "));
+        const verdict = summaryText(card.querySelector(".evidence-verdict"));
+        if (verdict) lines.push("- **Bewertung:** " + verdict);
+      });
+    }
+    lines.push("");
+
+    lines.push("## Quantitative Ergebnisse");
+    const quantCards = els.summaryQuant.querySelectorAll(".quant-card");
+    if (!quantCards.length) {
+      lines.push(summaryText(els.summaryQuant));
+    } else {
+      quantCards.forEach(function (card) {
+        lines.push("");
+        lines.push("### " + summaryText(card.querySelector("h4")));
+        const main = summaryText(card.querySelector(".quant-main"));
+        if (main) lines.push("- **Ergebnis:** " + main);
+        card.querySelectorAll(".quant-sub span").forEach(function (row) {
+          const text = summaryText(row);
+          if (text) lines.push("- " + text);
+        });
+        const pending = summaryText(card.querySelector(".quant-pending"));
+        if (pending) lines.push("- " + pending);
+      });
+    }
+    lines.push("");
+
+    lines.push("## Abschließende Bewertung");
+    els.summaryAssessment.querySelectorAll(".assessment-metric").forEach(function (metric) {
+      const value = summaryText(metric.querySelector("strong"));
+      const label = summaryText(metric.querySelector("span"));
+      if (value || label) lines.push("- **" + value + "** " + label);
+    });
+    lines.push("");
+    lines.push("## Protokollhilfe · Kurzfassung");
+    lines.push(summaryText(els.summaryReportText));
+    lines.push("");
+    lines.push("---");
+    lines.push("Erzeugt mit CHEMIE_ANALYTIK_HUB v" + HUB_VERSION + ".");
+    return lines.join("\n");
+  }
+
+  function saveSummaryMarkdown() {
+    const readiness = caseSummaryReadiness();
+    if (!readiness.summaryAvailable) return;
+    const content = summaryMarkdown();
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const mode = isExpertMode() ? "expert" : "gefuehrt";
+    a.href = url;
+    a.download = "VCOE01_Analysebericht_" + mode + "_" + summaryFileDate() + ".md";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
 
   function render() {
     els.schemaBadge.textContent = "CORE " + db.schemaVersion + " · Bridge " + (window.AnalytikBridge ? window.AnalytikBridge.version : "–");
