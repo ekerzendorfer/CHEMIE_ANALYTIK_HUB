@@ -164,6 +164,10 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .summary-hero-actions{display:grid;justify-items:end;gap:10px}
 .summary-status-badge{display:inline-flex;border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.12);padding:7px 11px;border-radius:999px;font-size:.8rem;font-weight:850;white-space:nowrap}
 .summary-back-btn{border:1px solid rgba(255,255,255,.35);background:#fff;color:#173f46;border-radius:10px;padding:9px 11px;font-weight:800;cursor:pointer}
+.summary-export-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.summary-export-btn{border:1px solid rgba(255,255,255,.38);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
+.summary-export-btn:hover{background:rgba(255,255,255,.2)}
+
 .summary-section{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:22px}
 .summary-section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:15px}.summary-section-head h3{font-size:1.2rem;margin:0}.summary-completion{font-size:.82rem;font-weight:850;border-radius:999px;background:var(--ok-soft);color:var(--ok);padding:6px 10px}
 .summary-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -196,3 +200,23 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .phot-eval-guidance{border-color:#b8cfdf;background:#f1f7fb}
 .phot-eval-guidance strong{color:#245f7c}
 .phot-eval-btn{margin-top:8px;border:0;border-radius:9px;padding:9px 11px;background:#245f7c;color:#fff;font-weight:800;cursor:pointer}
+
+
+@media print{
+  @page{size:A4;margin:13mm}
+  body{background:#fff;color:#17212b;font-size:10.5pt}
+  body>.hero,#workArea,.footer{display:none!important}
+  #caseSummary{display:block!important;max-width:none!important;padding:0!important}
+  .summary-hero{box-shadow:none;border:1px solid #8aa2ad;border-radius:10px;padding:16px;background:#fff!important;color:#17212b!important}
+  .summary-hero .kicker,.summary-hero h2{color:#17212b!important}
+  .summary-lead{color:#455b65!important}
+  .summary-status-badge{background:#eef4f5!important;color:#173f46!important;border-color:#aebfc5!important}
+  .summary-export-actions,.summary-back-btn{display:none!important}
+  .summary-section{box-shadow:none;border-radius:9px;padding:14px;margin-top:10px;break-inside:avoid}
+  .summary-routes{grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .summary-components{grid-template-columns:1fr 1fr;gap:7px}
+  .summary-evidence,.summary-quant{grid-template-columns:1fr 1fr;gap:7px}
+  .summary-assessment{grid-template-columns:1fr 1fr}
+  .route-card,.component-card,.evidence-card,.quant-card{break-inside:avoid}
+  a{color:#173f46!important;text-decoration:underline}
+}
