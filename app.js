@@ -1431,7 +1431,9 @@
           area_percent: peak.area_percent,
           width_min: peak.width_min
         },
-        assignment_text: "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Nutze M, MS, IR und ¹H-NMR, formuliere eine begründete Strukturhypothese und ordne anschließend einen Stoffnamen zu."
+        assignment_text: isExpertMode()
+          ? "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Erschließe zunächst aus Molmasse und Elementaranalyse die Summenformel und entwickle anschließend mit MS, IR und ¹H-NMR eine begründete Strukturhypothese."
+          : "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Nutze M, MS, IR und ¹H-NMR, formuliere eine begründete Strukturhypothese und ordne anschließend einen Stoffnamen zu."
       },
       returnUrl: returnUrl.toString()
     });
@@ -1516,7 +1518,9 @@
         target_substance_id: "SALICYLIC_ACID",
         display_label: sample.name_de,
         prior_findings: screeningResult.evaluation.supported_features || {},
-        assignment_text: "Die klassische Voranalyse hat bereits allgemeine Strukturmerkmale ergeben. Nutze diese Vorbefunde zusammen mit M, MS, IR und besonders ¹H-NMR, um eine konkrete Strukturhypothese für den unbekannten Feststoff zu entwickeln."
+        assignment_text: isExpertMode()
+          ? "Die klassische Voranalyse liefert allgemeine Strukturmerkmale. Erschließe zunächst aus Molmasse und Elementaranalyse die Summenformel und entwickle danach mit MS, IR und ¹H-NMR eine konkrete Strukturhypothese."
+          : "Die klassische Voranalyse hat bereits allgemeine Strukturmerkmale ergeben. Nutze diese Vorbefunde zusammen mit M, MS, IR und besonders ¹H-NMR, um eine konkrete Strukturhypothese für den unbekannten Feststoff zu entwickeln."
       },
       returnUrl: returnUrl.toString()
     });
