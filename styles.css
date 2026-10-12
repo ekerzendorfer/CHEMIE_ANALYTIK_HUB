@@ -220,3 +220,5 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
   .route-card,.component-card,.evidence-card,.quant-card{break-inside:avoid}
   a{color:#173f46!important;text-decoration:underline}
 }
+
+.elemental-evidence{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;background:#eef0fb;color:#4d4a86;font-size:.75rem;font-weight:800}
