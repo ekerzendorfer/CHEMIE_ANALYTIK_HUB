@@ -1575,10 +1575,10 @@
       returnUrl: returnUrl.toString()
     });
 
-    const target = new URL("../STRUKTUR_LAB/", window.location.href);
+    const target = new URL(isExpertMode() ? "../STRUKTUR_LAB/expert.html" : "../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
-    target.searchParams.set("build", "028");
+    target.searchParams.set("build", "029");
     window.location.href = target.toString();
   }
 
@@ -1663,10 +1663,10 @@
       returnUrl: returnUrl.toString()
     });
 
-    const target = new URL("../STRUKTUR_LAB/", window.location.href);
+    const target = new URL(isExpertMode() ? "../STRUKTUR_LAB/expert.html" : "../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
-    target.searchParams.set("build", "028");
+    target.searchParams.set("build", "029");
     window.location.href = target.toString();
   }
 
