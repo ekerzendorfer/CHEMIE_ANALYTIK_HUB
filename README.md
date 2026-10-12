@@ -390,6 +390,21 @@ Bei der Übergabe an STRUKTUR-LAB wird der Hub-Modus nun tatsächlich weitergege
 
 Dadurch wird im Expertenmodus des STRUKTUR-LAB unter anderem die Summenformel nicht vorgegeben. Die übrige Identitäts- und Beweiskette bleibt unverändert.
 
+### Elementaranalyse im Expert-Pfad
+
+STRUKTUR-LAB v0.2.6 ergänzt für Hub-Aufträge im Expertenmodus einen echten Summenformel-Schritt:
+
+- Summenformel zu Beginn nicht sichtbar
+- Elementaranalyse mit C/H-Massenanteilen; O aus Differenz
+- Verhältnisformel selbst bestimmen
+- Faktor aus Molmasse und Verhältnisformelmasse bestimmen
+- erst danach Summenformel und MS freigeben
+- RESULT dokumentiert ELEMENTAL_ANALYSIS und die Herkunft der Summenformel
+
+### End-to-End-Smoke-Test
+
+Die Datei **VCOE01_SMOKE_TEST.md** ist die verbindliche manuelle Release-Checkliste für den vollständigen Fall. Sie enthält einen kompletten Durchlauf in **Geführt** und einen zweiten vollständigen Durchlauf in **Expert**. Der normale Analyseweg und der Smoke-Test sind dabei derselbe Vorgang; zusätzliche Prüfschritte sind nur wenige gezielte Sperrtests.
+
 ### Noch bewusst unverändert
 
 Andere angebundene Detail-Apps behalten zunächst ihre vorhandene Hub-Arbeitslogik. Der Expertenmodus wird dort erst dann weiter differenziert, wenn eine fachlich sinnvolle und app-spezifische Trennung definiert ist. Ein bloßes globales „Hinweise ausblenden“ in allen Apps ist ausdrücklich nicht das Ziel.
