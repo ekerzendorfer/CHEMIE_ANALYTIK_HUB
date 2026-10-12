@@ -1,6 +1,6 @@
 # CHEMIE_ANALYTIK_HUB
 
-**Version:** v0.16.0 – progressive Zwischenbilanz und kuratierte PubChem-Recherche  
+**Version:** v0.17.0 – Geführt-/Expertenmodus im Analytik-Hub  
 **Basis:** CHEMIE_ANALYTIK_CORE schema v0.15.0 · CHEMIE_ANALYTIK_BRIDGE v0.2.1
 
 Browserbasierter Test-Hub für das geplante **Digitale Analytiklabor – CHEMIE mit KI**.
@@ -354,3 +354,42 @@ Für die drei bestätigbaren organischen VCÖ-01-Komponenten sind kuratierte Pub
 - Salicylsäure · CID 338
 
 Der Link **„Stoff bei PubChem erkunden“** wird ausschließlich auf einer Ergebniskarte angezeigt, wenn die jeweilige Identität durch die vorgesehene Beweiskette bestätigt ist. Hypothesen oder noch offene Identitäten erhalten keinen Recherchelink.
+
+
+## v0.17 – Geführt- und Expertenmodus
+
+Der Analytik-Hub besitzt jetzt zwei dauerhaft umschaltbare Arbeitsmodi. Der Moduswechsel verändert **nicht** den Fallzustand und setzt keine Ergebnisse zurück.
+
+### Verbindliche Modusmatrix
+
+| Bereich | Geführt | Expert |
+| --- | --- | --- |
+| Probenbaum / freigeschaltete Samples | identisch | identisch |
+| Fachliche Sperren und Abhängigkeiten | identisch | identisch |
+| Interne Stoffdaten / Identitätslecks | verborgen | verborgen |
+| Aktionsbereich | „Mögliche nächste Schritte“ | „Verfügbare Operationen und Analysen“ |
+| Hinweise zur aktuellen Probe | ausführliche Arbeits- und Methodenhinweise | nur knappe Zustands-/Probeninformation |
+| Gesperrte Operationen | Ursache möglichst konkret benannt | neutral als „gesperrt“ markiert |
+| App-Auswertungshinweise | sichtbar | ausgeblendet |
+| GC-Mischfraktionshinweise | ausführlich begründet | kompakter Status |
+| Feststoff-Voranalyse | Befunde plus didaktische Weiterführung | Befunde plus verfügbare Folgeaktion |
+| Zwischenbilanz / Abschluss | identisch evidenzbasiert | identisch evidenzbasiert |
+| Laborjournal / Messwerte | identisch | identisch |
+| STRUKTUR-LAB | Basismodus | Expertenmodus |
+
+### Grundsatz
+
+Der Expertenmodus erzeugt **keine künstlich schwierigere Chemie** und hebt keine fachlich notwendigen Sperren auf. Er reduziert vor allem Wegweisung, methodische Hinweise und vorweggenommene Interpretation. Die Lernenden müssen den nächsten sinnvollen Schritt stärker aus Probenzustand, bisherigen Resultaten und Beweiskette ableiten.
+
+### STRUKTUR-LAB-Kopplung
+
+Bei der Übergabe an STRUKTUR-LAB wird der Hub-Modus nun tatsächlich weitergegeben:
+
+- Geführt → `structure_mode: "basic"`
+- Expert → `structure_mode: "expert"`
+
+Dadurch wird im Expertenmodus des STRUKTUR-LAB unter anderem die Summenformel nicht vorgegeben. Die übrige Identitäts- und Beweiskette bleibt unverändert.
+
+### Noch bewusst unverändert
+
+Andere angebundene Detail-Apps behalten zunächst ihre vorhandene Hub-Arbeitslogik. Der Expertenmodus wird dort erst dann weiter differenziert, wenn eine fachlich sinnvolle und app-spezifische Trennung definiert ist. Ein bloßes globales „Hinweise ausblenden“ in allen Apps ist ausdrücklich nicht das Ziel.
