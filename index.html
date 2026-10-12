@@ -13,7 +13,7 @@
       <div>
         <p class="eyebrow">CHEMIE mit KI</p>
         <h1>Digitales Analytiklabor</h1>
-        <p class="subtitle">Test-Hub v0.16 · Proben vorbereiten, Analysewege planen, Ergebnisse vernetzen</p>
+        <p class="subtitle">Analytik-Hub v0.17 · Proben vorbereiten, Analysewege planen, Ergebnisse vernetzen</p>
       </div>
       <div class="version-badge" id="schemaBadge">CORE …</div>
     </div>
@@ -33,9 +33,10 @@
       </div>
       <div id="summaryMissing" class="summary-missing" hidden></div>
       <p id="caseDescription" class="muted"></p>
-      <div class="mode-row">
-        <span class="label">Modus</span>
-        <span class="pill active">Geführt · Testbetrieb</span>
+      <div class="mode-row" aria-label="Arbeitsmodus">
+        <span class="label">Arbeitsmodus</span>
+        <button id="guidedModeBtn" class="mode-switch active" type="button" aria-pressed="true">Geführt</button>
+        <button id="expertModeBtn" class="mode-switch" type="button" aria-pressed="false">Expert</button>
         <span class="pill">VCÖ-01</span>
       </div>
     </section>
@@ -56,7 +57,7 @@
       <h2 id="detailTitle">–</h2>
       <div id="sampleMeta" class="meta-grid"></div>
       <div class="divider"></div>
-      <h3>Mögliche nächste Schritte</h3>
+      <h3 id="actionsTitle">Mögliche nächste Schritte</h3>
       <div id="actions" class="actions"></div>
       <p id="actionHint" class="hint"></p>
       <div id="resultGuidance" hidden></div>
@@ -156,7 +157,7 @@
 
   <footer class="footer">
     <div class="wrap">
-      <strong>CHEMIE_ANALYTIK_HUB v0.16</strong>
+      <strong>CHEMIE_ANALYTIK_HUB v0.17</strong>
       <span> · Progressive Zwischenbilanz und kuratierte PubChem-Recherche nach bestätigter Identität.</span>
     </div>
   </footer>
