@@ -408,3 +408,21 @@ Die Datei **VCOE01_SMOKE_TEST.md** ist die verbindliche manuelle Release-Checkli
 ### Noch bewusst unverändert
 
 Andere angebundene Detail-Apps behalten zunächst ihre vorhandene Hub-Arbeitslogik. Der Expertenmodus wird dort erst dann weiter differenziert, wenn eine fachlich sinnvolle und app-spezifische Trennung definiert ist. Ein bloßes globales „Hinweise ausblenden“ in allen Apps ist ausdrücklich nicht das Ziel.
+
+
+## v0.17.1 – Analysebericht speichern
+
+Die Zwischen-/Abschlussansicht kann jetzt direkt gesichert werden.
+
+- **Bericht speichern (.md)** erzeugt eine weiterbearbeitbare Markdown-Datei mit:
+  - Arbeitsmodus und Bearbeitungsstand
+  - analytischer Route in allen drei Hauptzweigen
+  - identifizierten Bestandteilen
+  - Beweisketten
+  - quantitativen Ergebnissen
+  - Abschlusskennzahlen
+  - Protokoll-Kurzfassung
+  - PubChem-Referenzen bestätigter Stoffe
+- **Drucken / PDF** nutzt eine eigene Druckansicht und blendet Arbeitsbereich, Entwicklungsdiagnose und Bedienelemente aus. Über den Browser kann die vollständige Zusammenfassung als PDF gespeichert werden.
+
+Die Exportdaten werden direkt aus der aktuell gerenderten Zusammenfassung erzeugt. Dadurch bleibt der gespeicherte Bericht inhaltlich mit der sichtbaren Zwischen-/Abschlussbilanz synchron.
