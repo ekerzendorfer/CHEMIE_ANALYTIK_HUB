@@ -1422,7 +1422,7 @@
       peakId: peak.peak_id,
       input: {
         mode: "gc_peak",
-        structure_mode: "basic",
+        structure_mode: isExpertMode() ? "expert" : "basic",
         target_substance_id: targetSubstanceId,
         display_label: sample.name_de + " · " + peak.peak_id,
         source_peak: {
@@ -1512,7 +1512,7 @@
       sourceResultId: screeningResult.result_id,
       input: {
         mode: "solid_screening",
-        structure_mode: "basic",
+        structure_mode: isExpertMode() ? "expert" : "basic",
         target_substance_id: "SALICYLIC_ACID",
         display_label: sample.name_de,
         prior_findings: screeningResult.evaluation.supported_features || {},
@@ -1779,6 +1779,7 @@
 
   function renderResultGuidance(sample) {
     if (!els.resultGuidance) return;
+    const expert = isExpertMode();
 
     const gcResults = state.results.filter(function (r) {
       return r.sample_id === sample.id && r.analysis_type === "GC" && r.status === "completed";
@@ -1811,7 +1812,7 @@
       completionHtml += '<div class="guidance-box completion-guidance"><strong>Qualitative Ionenanalyse abgeschlossen</strong><p>' +
         escapeHtml(formatIon(ionCompletion.evaluation.identified.cation)) + ' und ' +
         escapeHtml(formatIon(ionCompletion.evaluation.identified.anion)) +
-        ' wurden bestätigt. Dieser Pflichtbefund ist für den Fallabschluss erfüllt.</p></div>';
+        (expert ? ' bestätigt.</p></div>' : ' wurden bestätigt. Dieser Pflichtbefund ist für den Fallabschluss erfüllt.</p></div>');
     }
     if (photCompletion) {
       const standards = photCompletion.measurement && photCompletion.measurement.standard_measurements || [];
@@ -1826,10 +1827,12 @@
           escapeHtml(Number(photEval.evaluation.cuso4_5h2o_mass_g || 0).toLocaleString("de-AT",{minimumFractionDigits:3,maximumFractionDigits:4})) +
           ' g</span></div>';
       } else {
-        completionHtml += '<div class="guidance-box phot-eval-guidance"><strong>Photometrische Messdaten liegen vor</strong><p>' +
-          escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
-          escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden übernommen. Eine quantitative Aussage ist erst nach der nachvollziehbaren Auswertung zulässig.</p>' +
-          '<button class="phot-eval-btn" type="button" data-phot-result="' + escapeHtml(photCompletion.result_id) +
+        completionHtml += '<div class="guidance-box phot-eval-guidance' + (expert ? ' expert-compact' : '') + '"><strong>Photometrische Messdaten liegen vor</strong><p>' +
+          (expert
+            ? escapeHtml(String(standards.length)) + ' Standards · ' + escapeHtml(String(unknowns.length)) + ' unbekannte Messung(en).'
+            : escapeHtml(String(standards.length)) + ' Standardmessung(en) und ' +
+              escapeHtml(String(unknowns.length)) + ' Messung(en) der unbekannten Probe wurden übernommen. Eine quantitative Aussage ist erst nach der nachvollziehbaren Auswertung zulässig.') +
+          '</p><button class="phot-eval-btn" type="button" data-phot-result="' + escapeHtml(photCompletion.result_id) +
           '">Im MESSWERT_LAB auswerten</button></div>';
       }
     }
@@ -1892,8 +1895,12 @@
         }).join("");
 
         const intro = purity.pureEnough
-          ? '<p>Diese Fraktion ist für die direkte Strukturaufklärung des dominanten Peaks ausreichend rein. Kleinere Nebenpeaks werden nicht separat in das Reinstoff-Spektroskopie-Lab geschickt.</p>'
-          : '<div class="mixture-warning"><strong>Mischprobe erkannt – Reinstoff-Spektroskopie gesperrt</strong><p>Mehrere relevante GC-Komponenten sind vorhanden. Ein direktes MS-/IR-/¹H-NMR-Spektrum dieser Gesamtprobe wäre ein Mischspektrum und daher für unsere Reinstoff-Strukturaufklärung ungeeignet. Bereits unabhängig bestätigte Standards können hier jedoch chromatographisch geprüft und aufgestockt werden.</p></div>';
+          ? (expert
+              ? '<p>Reinstoff-Spektroskopie für den dominanten Peak freigegeben.</p>'
+              : '<p>Diese Fraktion ist für die direkte Strukturaufklärung des dominanten Peaks ausreichend rein. Kleinere Nebenpeaks werden nicht separat in das Reinstoff-Spektroskopie-Lab geschickt.</p>')
+          : (expert
+              ? '<div class="mixture-warning"><strong>Mehrkomponentenfraktion</strong><p>Reinstoff-Spektroskopie für diese Gesamtprobe nicht freigegeben.</p></div>'
+              : '<div class="mixture-warning"><strong>Mischprobe erkannt – Reinstoff-Spektroskopie gesperrt</strong><p>Mehrere relevante GC-Komponenten sind vorhanden. Ein direktes MS-/IR-/¹H-NMR-Spektrum dieser Gesamtprobe wäre ein Mischspektrum und daher für unsere Reinstoff-Strukturaufklärung ungeeignet. Bereits unabhängig bestätigte Standards können hier jedoch chromatographisch geprüft und aufgestockt werden.</p></div>');
 
         return '<div class="guidance-box gc-guidance"><strong>GC-Peaks weiter untersuchen</strong>' +
           intro + '<div class="gc-peak-list">' + peakRows + '</div></div>';
@@ -1932,15 +1939,15 @@
             : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
               '">Im STRUKTUR-LAB untersuchen</button>';
 
-      organicHtml = '<div class="guidance-box organic-screening"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
-        '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>' +
+      organicHtml = '<div class="guidance-box organic-screening' + (expert ? ' expert-compact' : '') + '"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
+        (expert ? '' : '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>') +
         (featureRows ? '<ul>' + featureRows + '</ul>' : '<p>Noch keine auswertbaren Strukturmerkmale zurückgegeben.</p>') +
-        '<p class="screening-next">Die Vorbefunde werden als Startwissen an die instrumentelle Strukturaufklärung übergeben. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p>' +
+        (expert ? '' : '<p class="screening-next">Die Vorbefunde werden als Startwissen an die instrumentelle Strukturaufklärung übergeben. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p>') +
         structureStep + '</div>';
     }
 
     let otherHtml = "";
-    if (otherResults.length) {
+    if (!expert && otherResults.length) {
       const latest = otherResults[otherResults.length - 1];
       const evaluation = latest.evaluation || {};
       const hints = Array.isArray(evaluation.hints) ? evaluation.hints : [];
