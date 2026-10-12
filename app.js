@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.16.0";
+  const HUB_VERSION = "0.17.0";
 
   const els = {};
   let db = null;
@@ -37,17 +37,28 @@
       "validatorDetails", "resetBtn", "toggleDiag", "resultGuidance", "workArea",
       "summaryOpenBtn", "caseSummary", "summaryBackBtn", "summaryTitle", "summaryLead",
       "summaryStatusBadge", "summaryCompletion", "summaryRoutes", "summaryComponents",
-      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText", "summaryMissing"
+      "summaryEvidence", "summaryQuant", "summaryAssessment", "summaryReportText", "summaryMissing",
+      "guidedModeBtn", "expertModeBtn", "actionsTitle"
     ].forEach(function (id) { els[id] = document.getElementById(id); });
   }
 
   function bindStaticEvents() {
     els.resetBtn.addEventListener("click", function () {
       if (!confirm("VCÖ-01 wirklich auf den Ausgangszustand zurücksetzen?")) return;
+      const retainedMode = learningMode();
       state = createInitialState(db);
+      state.learningMode = retainedMode;
       selectedSampleId = db.case.start_sample_id;
       saveState();
       render();
+    });
+
+    els.guidedModeBtn.addEventListener("click", function () {
+      setLearningMode("guided");
+    });
+
+    els.expertModeBtn.addEventListener("click", function () {
+      setLearningMode("expert");
     });
 
     els.toggleDiag.addEventListener("click", function () {
@@ -165,6 +176,7 @@
   function createInitialState(core) {
     return {
       caseId: core.case.id,
+      learningMode: "guided",
       unlockedSamples: [core.case.start_sample_id],
       completedOperations: [],
       results: [],
@@ -204,6 +216,33 @@
     if (!Array.isArray(state.importedResultIds)) state.importedResultIds = [];
     if (!state.runtimeSamples || typeof state.runtimeSamples !== "object") state.runtimeSamples = {};
     if (!Array.isArray(state.journal)) state.journal = [];
+    if (!["guided","expert"].includes(state.learningMode)) state.learningMode = "guided";
+  }
+
+  function learningMode() {
+    return state && state.learningMode === "expert" ? "expert" : "guided";
+  }
+
+  function isExpertMode() {
+    return learningMode() === "expert";
+  }
+
+  function setLearningMode(mode) {
+    const next = mode === "expert" ? "expert" : "guided";
+    if (learningMode() === next) return;
+    state.learningMode = next;
+    saveState();
+    render();
+  }
+
+  function renderModeControls() {
+    const expert = isExpertMode();
+    document.body.classList.toggle("expert-mode", expert);
+    els.guidedModeBtn.classList.toggle("active", !expert);
+    els.expertModeBtn.classList.toggle("active", expert);
+    els.guidedModeBtn.setAttribute("aria-pressed", String(!expert));
+    els.expertModeBtn.setAttribute("aria-pressed", String(expert));
+    els.actionsTitle.textContent = expert ? "Verfügbare Operationen und Analysen" : "Mögliche nächste Schritte";
   }
 
   function saveState() {
@@ -882,7 +921,10 @@
   function render() {
     els.schemaBadge.textContent = "CORE " + db.schemaVersion + " · Bridge " + (window.AnalytikBridge ? window.AnalytikBridge.version : "–");
     els.caseTitle.textContent = db.case.name_de;
-    els.caseDescription.textContent = "Eine unbekannte heterogene Probe soll sinnvoll vorbereitet und schrittweise analysiert werden. Die interne Stoffzusammensetzung bleibt im Schülerbetrieb verborgen.";
+    renderModeControls();
+    els.caseDescription.textContent = isExpertMode()
+      ? "Unbekannte heterogene Probe. Plane Probenvorbereitung und Analytik anhand des Probenjournals und der vorliegenden Befunde. Interne Stoffdaten bleiben verborgen."
+      : "Eine unbekannte heterogene Probe soll sinnvoll vorbereitet und schrittweise analysiert werden. Die interne Stoffzusammensetzung bleibt im Schülerbetrieb verborgen.";
     renderTree();
     renderDetail();
     renderJournal();
