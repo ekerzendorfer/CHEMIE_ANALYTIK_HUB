@@ -52,6 +52,13 @@ h3 { margin: 0 0 12px; font-size: 1rem; }
 .label { color: var(--muted); font-size: .86rem; margin-right: 4px; }
 .pill { background: #eef2f4; color: #56656e; border-radius: 999px; padding: 6px 10px; font-size: .82rem; font-weight: 700; }
 .pill.active { background: var(--accent-soft); color: var(--accent); }
+.mode-switch{border:1px solid var(--line);background:#fff;color:#56656e;border-radius:999px;padding:6px 11px;font-size:.82rem;font-weight:800;cursor:pointer}
+.mode-switch:hover{border-color:#8bbdc0;background:#fbfefe}
+.mode-switch.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.expert-mode .hint{min-height:0}
+.expert-mode .detail-card .hint:empty{display:none}
+.expert-mode .guidance-box.expert-compact p{margin-bottom:0}
+
 .ghost { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 10px; padding: 8px 11px; cursor: pointer; }
 .ghost:hover { border-color: #aebcc4; background: #f8fafb; }
 .sample-tree { padding-top: 12px; }
