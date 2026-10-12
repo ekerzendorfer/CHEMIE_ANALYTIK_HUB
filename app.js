@@ -1026,9 +1026,16 @@
       const executable = localExecutable || externalExecutable;
       const done = operationAlreadyDone(sample.id, opId);
       const requirementOk = operationRequirementSatisfied(sample, opId);
-      btn.textContent = externalExecutable && opId === "DISTILL"
-        ? "Destillationslabor öffnen"
-        : (op ? op.name_de : opId) + (!executable ? " · vorbereitet" : (!requirementOk ? " · nach Ionenanalyse" : ""));
+      if (isExpertMode()) {
+        const baseLabel = externalExecutable && opId === "DISTILL"
+          ? "Destillationslabor öffnen"
+          : (op ? op.name_de : opId);
+        btn.textContent = baseLabel + (done ? " · abgeschlossen" : (!executable ? " · nicht verfügbar" : (!requirementOk ? " · gesperrt" : "")));
+      } else {
+        btn.textContent = externalExecutable && opId === "DISTILL"
+          ? "Destillationslabor öffnen"
+          : (op ? op.name_de : opId) + (done ? " · abgeschlossen" : (!executable ? " · vorbereitet" : (!requirementOk ? " · nach Ionenanalyse" : "")));
+      }
       btn.disabled = !executable || done || !requirementOk;
       if (localExecutable && !done && requirementOk) {
         btn.addEventListener("click", function () { executeLocalOperation(sample, op); });
@@ -1082,7 +1089,23 @@
       els.actions.appendChild(btn);
     });
 
-    if (sample.id === "VCOE01_RAW") {
+    if (isExpertMode()) {
+      const expertFacts = {
+        VCOE01_RAW: "Heterogene Ausgangsprobe.",
+        VCOE01_SOLID: "Fester Anteil nach Filtration.",
+        VCOE01_SOLID_AQ: "Wässrige Stocklösung aus dem Filterrückstand · 100,0 mL.",
+        VCOE01_ION_ALIQUOT: "Teilprobe für qualitative Analyse.",
+        VCOE01_PHOT_ALIQUOT: "Teilprobe für quantitative Photometrie.",
+        VCOE01_PHOT_AMMINE: "Vorbereitete photometrische Messlösung.",
+        VCOE01_FILTRATE: "Organisches Filtrat.",
+        VCOE01_F1: "Destillationsfraktion · Zusammensetzung unbekannt.",
+        VCOE01_F2: "Destillationsfraktion · Zusammensetzung unbekannt.",
+        VCOE01_F3: "Destillationsfraktion · Zusammensetzung unbekannt.",
+        VCOE01_RESIDUE: "Nichtflüchtiger Destillationsrückstand.",
+        VCOE01_RESIDUE_SOLID: "Isolierter weißer organischer Feststoff."
+      };
+      els.actionHint.textContent = expertFacts[sample.id] || "Wähle einen analytisch begründeten nächsten Schritt.";
+    } else if (sample.id === "VCOE01_RAW") {
       els.actionHint.textContent = "Filtration ist funktional. Zentrifugation bleibt als alternative Probenvorbereitung reserviert, bis dafür eigene Ausgabesamples definiert sind.";
     } else if (sample.id === "VCOE01_SOLID") {
       els.actionHint.textContent = "Der Filterrückstand kann nun in Wasser gelöst werden; dadurch entsteht eine neue wässrige Analyseprobe.";
