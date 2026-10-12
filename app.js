@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.17.1";
+  const HUB_VERSION = "0.17.2";
 
   const els = {};
   let db = null;
@@ -345,6 +345,26 @@
       hypothesis_name_de: hypothesis.name_de || null,
       structure_result_id: result.result_id
     });
+  }
+
+  function structureElementalEvidence(result) {
+    const m = result && result.measurement || {};
+    const ea = m.elemental_analysis || {};
+    if (m.formula_source !== "elemental_analysis_plus_molar_mass" || !ea.student_verified) return null;
+    return {
+      empirical: ea.empirical_formula || null,
+      molecular: ea.molecular_formula || (result.evaluation && result.evaluation.hypothesis && result.evaluation.hypothesis.formula) || null,
+      factor: Number(ea.factor)
+    };
+  }
+
+  function structureElementalBadgeHtml(result) {
+    const ea = structureElementalEvidence(result);
+    if (!ea) return "";
+    const relation = ea.empirical && ea.molecular
+      ? ea.empirical + (Number.isFinite(ea.factor) ? " · n=" + ea.factor : "") + " → " + ea.molecular
+      : (ea.molecular || "Summenformel erschlossen");
+    return '<span class="peak-next elemental-evidence">Elementaranalyse → Summenformel · ' + escapeHtml(relation) + '</span>';
   }
 
   function structureResultForPeak(gcResultId, peakId) {
@@ -847,17 +867,27 @@
           : "Ionenidentität bestätigt; quantitative Photometrie noch offen."));
     }
     if (readiness.ethyl) {
-      evidenceCards.push(evidenceCardHtml(ethyl.name_de,
-        ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(ethylCross ? ["F2-Gegenprobe"] : []),
+      const ethylStructure = structureResultForPeak(readiness.ethyl.source_result_id, readiness.ethyl.peak_id);
+      const ethylSteps = ["Destillation", "GC"];
+      if (structureElementalEvidence(ethylStructure)) ethylSteps.push("Elementaranalyse → Summenformel");
+      ethylSteps.push("M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung");
+      if (ethylCross) ethylSteps.push("F2-Gegenprobe");
+      evidenceCards.push(evidenceCardHtml(ethyl.name_de, ethylSteps,
         "Chromatographisch und spektroskopisch bestätigt."));
     }
     if (readiness.butanol) {
-      evidenceCards.push(evidenceCardHtml(butanol.name_de,
-        ["Destillation", "GC", "M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung"].concat(butanolCross ? ["F2-Gegenprobe"] : []),
+      const butanolStructure = structureResultForPeak(readiness.butanol.source_result_id, readiness.butanol.peak_id);
+      const butanolSteps = ["Destillation", "GC"];
+      if (structureElementalEvidence(butanolStructure)) butanolSteps.push("Elementaranalyse → Summenformel");
+      butanolSteps.push("M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung");
+      if (butanolCross) butanolSteps.push("F2-Gegenprobe");
+      evidenceCards.push(evidenceCardHtml(butanol.name_de, butanolSteps,
         "Chromatographisch und spektroskopisch bestätigt."));
     }
     if (readiness.melting) {
-      const salSteps = ["Feststoff-Voranalyse", "M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt"];
+      const salSteps = ["Feststoff-Voranalyse"];
+      if (structureElementalEvidence(readiness.solidStructure)) salSteps.push("Elementaranalyse → Summenformel");
+      salSteps.push("M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt");
       if (readiness.quant) salSteps.push("Titration");
       evidenceCards.push(evidenceCardHtml(sal.name_de, salSteps,
         readiness.quant ? "Identität unabhängig bestätigt und anschließend quantitativ bestimmt." : "Identität unabhängig bestätigt."));
@@ -1502,6 +1532,7 @@
       analysisType: "ORGANIC_SOLID_SCREENING",
       input: {
         mode: "qualitative_screening",
+        learning_mode: learningMode(),
         model_ref: "vcoe01_residue_solid_v1",
         display_label: "Unbekannter weißer organischer Feststoff",
         hide_identity: true,
@@ -1693,6 +1724,7 @@
       sourceResultId: structureResult.result_id,
       input: {
         mode: "melting_confirmation",
+        learning_mode: learningMode(),
         model_ref: "vcoe01_residue_solid_v1",
         source_structure_result_id: structureResult.result_id,
         hypothesis_substance_id: hypothesis.substance_id,
@@ -1732,6 +1764,7 @@
       sourceResultId: confirmationResult.result_id,
       input: {
         mode: "hub_quantitative_salicylic",
+        learning_mode: learningMode(),
         source_confirmation_result_id: confirmationResult.result_id,
         substance_id: "SALICYLIC_ACID",
         substance_name_de: "Salicylsäure",
@@ -2032,9 +2065,10 @@
             button = '<span class="peak-next mixture-locked">Keine Reinstoff-Spektroskopie: Standard wird erst nach unabhängiger Identifikation in einer ausreichend reinen Fraktion freigeschaltet.</span>';
           }
 
+          const elementalBadge = structureResult ? structureElementalBadgeHtml(structureResult) : "";
           return '<div class="gc-peak-row"><div><strong>' + escapeHtml(peak.peak_id) +
             '</strong><span>tR ' + escapeHtml(rt) + ' · Fläche ' + escapeHtml(area) + '</span></div>' +
-            status + button + '</div>';
+            status + elementalBadge + button + '</div>';
         }).join("");
 
         const intro = purity.pureEnough
@@ -2077,7 +2111,8 @@
           : solidStructureResult && solidStructureResult.evaluation && solidStructureResult.evaluation.hypothesis
             ? '<div class="solid-structure-state"><span class="peak-status supported">Hypothese: ' +
               escapeHtml(solidStructureResult.evaluation.hypothesis.name_de || solidStructureResult.evaluation.hypothesis.substance_id || "gestützt") +
-              '</span><button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
+              '</span>' + structureElementalBadgeHtml(solidStructureResult) +
+              '<button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
               '">Mit Schmelz- & Mischschmelzpunkt bestätigen</button></div>'
             : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
               '">Im STRUKTUR-LAB untersuchen</button>';
