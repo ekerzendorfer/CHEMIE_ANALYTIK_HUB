@@ -1578,6 +1578,7 @@
     const target = new URL("../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
+    target.searchParams.set("build", "027");
     window.location.href = target.toString();
   }
 
@@ -1665,6 +1666,7 @@
     const target = new URL("../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
+    target.searchParams.set("build", "027");
     window.location.href = target.toString();
   }
 
