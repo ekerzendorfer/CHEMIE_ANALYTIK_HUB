@@ -1561,6 +1561,7 @@
     const target = new URL("../ORG_FESTSTOFF_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
+    target.searchParams.set("build", "021");
     window.location.href = target.toString();
   }
 
@@ -1738,6 +1739,7 @@
     const target = new URL("../ORG_FESTSTOFF_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
+    target.searchParams.set("build", "021");
     window.location.href = target.toString();
   }
 
@@ -1784,6 +1786,7 @@
     const target = new URL("../TITRATIONSTOOL/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
+    target.searchParams.set("build", "1584");
     window.location.href = target.toString();
   }
 
