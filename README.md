@@ -426,3 +426,15 @@ Die Zwischen-/Abschlussansicht kann jetzt direkt gesichert werden.
 - **Drucken / PDF** nutzt eine eigene Druckansicht und blendet Arbeitsbereich, Entwicklungsdiagnose und Bedienelemente aus. Über den Browser kann die vollständige Zusammenfassung als PDF gespeichert werden.
 
 Die Exportdaten werden direkt aus der aktuell gerenderten Zusammenfassung erzeugt. Dadurch bleibt der gespeicherte Bericht inhaltlich mit der sichtbaren Zwischen-/Abschlussbilanz synchron.
+
+
+## v0.17.2 – Expert-Modus in Feststoff- und Titrationszweig
+
+Der Hub reicht den gewählten Arbeitsmodus jetzt zusätzlich an ORG_FESTSTOFF_LAB und TITRATIONSTOOL weiter.
+
+Neu:
+- STRUKTUR-LAB-RESULTs aus dem Expertenmodus machen die Elementaranalyse im Hub sichtbar: Verhältnisformel, Faktor n und daraus erschlossene Summenformel werden als eigener Evidenzbaustein angezeigt.
+- Die Abschluss-Beweisketten enthalten bei Expert-RESULTs den Schritt **Elementaranalyse → Summenformel**.
+- ORG_FESTSTOFF_LAB erhält `learning_mode` und reduziert im Expert-Modus methodische Beschreibungstexte und Deutung.
+- TITRATIONSTOOL erhält `learning_mode` und reduziert im Expert-Modus die Inline-Rechenhilfen, ohne die fachliche siebenstufige Rechenkette zu verändern.
+- Die aktualisierten Detail-Apps werden mit Build-Parametern gestartet, um veraltete Browser-/Pages-Caches zu vermeiden.
