@@ -307,10 +307,16 @@
             ? (result.peak_id
               ? "Strukturhypothese " + String(result.peak_id) + ": " +
                 String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
-                " · mit M/MS/IR/¹H-NMR vereinbar; GC-Bestätigung noch ausständig."
+                " · mit M/MS/IR/¹H-NMR vereinbar" +
+                (structureElementalSkipped(result) ? "; Elementaranalyse bewusst übersprungen" : "") +
+                "; GC-Bestätigung noch ausständig."
               : "Strukturhypothese Feststoff: " +
                 String(result.evaluation.hypothesis.name_de || result.evaluation.hypothesis.substance_id || "–") +
-                " · mit Voranalyse, M/MS/IR/¹H-NMR vereinbar; Schmelzpunktbestätigung noch ausständig.")
+                " · " +
+                ((result.measurement && result.measurement.prior_screening_skipped) ? "ohne Feststoff-Voranalyse; " : "mit Voranalyse, ") +
+                "M/MS/IR/¹H-NMR vereinbar" +
+                (structureElementalSkipped(result) ? "; Elementaranalyse bewusst übersprungen" : "") +
+                "; Schmelzpunktbestätigung noch ausständig.")
             : result.analysis_type === "GC_CONFIRMATION" && result.evaluation
               ? "Identität " + String(result.peak_id || "Peak") + " bestätigt: " +
                 String(result.evaluation.confirmed_name_de || result.evaluation.confirmed_substance_id || "–") +
@@ -556,10 +562,12 @@
     const screening = latestCaseResult("ORGANIC_SOLID_SCREENING", function (r) {
       return r.sample_id === "VCOE01_RESIDUE_SOLID";
     });
-    const solidStructure = screening ? latestCaseResult("STRUCTURE_ELUCIDATION", function (r) {
-      return r.source_result_id === screening.result_id &&
-        r.evaluation && r.evaluation.identity_status === "supported";
-    }) : null;
+    const screeningSkipped = expertSolidScreeningSkipped();
+    const solidStructure = latestCaseResult("STRUCTURE_ELUCIDATION", function (r) {
+      if (r.sample_id !== "VCOE01_RESIDUE_SOLID" || r.peak_id) return false;
+      if (!(r.evaluation && r.evaluation.identity_status === "supported")) return false;
+      return screening ? r.source_result_id === screening.result_id : screeningSkipped;
+    });
     const melting = solidStructure ? latestCaseResult("MELTING_POINT_CONFIRMATION", function (r) {
       return r.source_result_id === solidStructure.result_id &&
         r.evaluation && r.evaluation.identity_status === "confirmed";
@@ -575,7 +583,10 @@
       { id: "dist", label: "Fraktionierende Destillation abgeschlossen", done: !!dist },
       { id: "ethyl", label: "Ethylacetat chromatographisch bestätigt", done: !!ethyl },
       { id: "butanol", label: "1-Butanol chromatographisch bestätigt", done: !!butanol },
-      { id: "screening", label: "Organische Feststoff-Voranalyse abgeschlossen", done: !!screening },
+      { id: "screening", label: screeningSkipped && !screening
+          ? "Organische Feststoff-Voranalyse bewusst übersprungen"
+          : "Organische Feststoff-Voranalyse abgeschlossen",
+        done: !!screening || screeningSkipped },
       { id: "solidStructure", label: "Feststoffstruktur spektroskopisch gestützt", done: !!solidStructure },
       { id: "melting", label: "Salicylsäure physikalisch bestätigt", done: !!melting },
       { id: "quant", label: "Salicylsäure quantitativ bestimmt", done: !!quant }
@@ -597,8 +608,8 @@
       {
         id: "solid",
         label: "Nichtflüchtiger organischer Zweig",
-        done: !!screening && !!solidStructure && !!melting && !!quant,
-        started: !!screening || !!solidStructure || !!melting || !!quant
+        done: (!!screening || screeningSkipped) && !!solidStructure && !!melting && !!quant,
+        started: !!screening || screeningSkipped || !!solidStructure || !!melting || !!quant
       }
     ];
     const doneCount = checks.filter(function (x) { return x.done; }).length;
@@ -618,6 +629,7 @@
       ethyl: ethyl,
       butanol: butanol,
       screening: screening,
+      screeningSkipped: screeningSkipped,
       solidStructure: solidStructure,
       melting: melting,
       quant: quant
@@ -900,6 +912,7 @@
       const ethylStructure = structureResultForPeak(readiness.ethyl.source_result_id, readiness.ethyl.peak_id);
       const ethylSteps = ["Destillation", "GC"];
       if (structureElementalEvidence(ethylStructure)) ethylSteps.push("Elementaranalyse → Summenformel");
+      else if (structureElementalSkipped(ethylStructure)) ethylSteps.push("Elementaranalyse bewusst übersprungen");
       ethylSteps.push("M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung");
       if (ethylCross) ethylSteps.push("F2-Gegenprobe");
       evidenceCards.push(evidenceCardHtml(ethyl.name_de, ethylSteps,
@@ -909,14 +922,18 @@
       const butanolStructure = structureResultForPeak(readiness.butanol.source_result_id, readiness.butanol.peak_id);
       const butanolSteps = ["Destillation", "GC"];
       if (structureElementalEvidence(butanolStructure)) butanolSteps.push("Elementaranalyse → Summenformel");
+      else if (structureElementalSkipped(butanolStructure)) butanolSteps.push("Elementaranalyse bewusst übersprungen");
       butanolSteps.push("M/MS/IR/¹H-NMR", "Referenzstandard", "Aufstockung");
       if (butanolCross) butanolSteps.push("F2-Gegenprobe");
       evidenceCards.push(evidenceCardHtml(butanol.name_de, butanolSteps,
         "Chromatographisch und spektroskopisch bestätigt."));
     }
     if (readiness.melting) {
-      const salSteps = ["Feststoff-Voranalyse"];
+      const salSteps = [readiness.screeningSkipped && !readiness.screening
+        ? "Feststoff-Voranalyse bewusst übersprungen"
+        : "Feststoff-Voranalyse"];
       if (structureElementalEvidence(readiness.solidStructure)) salSteps.push("Elementaranalyse → Summenformel");
+      else if (structureElementalSkipped(readiness.solidStructure)) salSteps.push("Elementaranalyse bewusst übersprungen");
       salSteps.push("M/MS/IR/¹H-NMR", "Referenz-Schmelzpunkt", "Mischschmelzpunkt");
       if (readiness.quant) salSteps.push("Titration");
       evidenceCards.push(evidenceCardHtml(sal.name_de, salSteps,
@@ -978,7 +995,9 @@
       reportParts.push(Number.isFinite(salMass)
         ? "Der nichtflüchtige Feststoff wurde als Salicylsäure bestätigt und anschließend mit " +
           fmtSummary(salMass, 4) + " g quantitativ bestimmt."
-        : "Der nichtflüchtige Feststoff wurde durch Voranalyse, Spektroskopie und Mischschmelzpunkt als Salicylsäure bestätigt.");
+        : "Der nichtflüchtige Feststoff wurde durch " +
+          (readiness.screeningSkipped && !readiness.screening ? "instrumentelle Strukturaufklärung" : "Voranalyse und Spektroskopie") +
+          " sowie Mischschmelzpunkt als Salicylsäure bestätigt.");
     }
     reportParts.push(readiness.complete
       ? "Damit sind die wesentlichen Stoffidentitäten des Falls durch voneinander unabhängige analytische Belege abgesichert. Eine vollständige quantitative Gesamtbilanz der beiden flüchtigen Lösungsmittel bleibt einer späteren quantitativen GC-Erweiterung vorbehalten."
