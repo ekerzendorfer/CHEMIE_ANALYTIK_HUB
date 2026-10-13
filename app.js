@@ -386,7 +386,8 @@
 
   function structureElementalSkipped(result) {
     const m = result && result.measurement || {};
-    return m.formula_source === "not_determined_elemental_analysis_skipped" ||
+    return m.formula_source === "structure_hypothesis_without_prior_formula" ||
+      m.formula_source === "not_determined_elemental_analysis_skipped" ||
       !!(result && result.student_interpretation && result.student_interpretation.elemental_analysis_skipped);
   }
 
@@ -566,7 +567,9 @@
     const solidStructure = latestCaseResult("STRUCTURE_ELUCIDATION", function (r) {
       if (r.sample_id !== "VCOE01_RESIDUE_SOLID" || r.peak_id) return false;
       if (!(r.evaluation && r.evaluation.identity_status === "supported")) return false;
-      return screening ? r.source_result_id === screening.result_id : screeningSkipped;
+      return screening
+        ? (r.source_result_id === screening.result_id || !!(r.measurement && r.measurement.prior_screening_skipped))
+        : screeningSkipped;
     });
     const melting = solidStructure ? latestCaseResult("MELTING_POINT_CONFIRMATION", function (r) {
       return r.source_result_id === solidStructure.result_id &&
@@ -1697,7 +1700,7 @@
     const target = new URL(isExpertMode() ? "../STRUKTUR_LAB/expert.html" : "../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
-    target.searchParams.set("build", "029");
+    target.searchParams.set("build", "030");
     window.location.href = target.toString();
   }
 
@@ -1789,7 +1792,7 @@
     const target = new URL(isExpertMode() ? "../STRUKTUR_LAB/expert.html" : "../STRUKTUR_LAB/", window.location.href);
     target.searchParams.set("bridge", "1");
     target.searchParams.set("run", run.run_id);
-    target.searchParams.set("build", "029");
+    target.searchParams.set("build", "030");
     window.location.href = target.toString();
   }
 
