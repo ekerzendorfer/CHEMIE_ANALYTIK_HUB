@@ -4,7 +4,7 @@
   const STORAGE_KEY = "chemie_analytik_hub_v0_2";
   const LEGACY_STORAGE_KEY = "chemie_analytik_hub_v0_1";
   const ACTIVE_CASE = "VCOE01";
-  const HUB_VERSION = "0.17.2";
+  const HUB_VERSION = "0.18.0";
 
   const els = {};
   let db = null;
@@ -190,6 +190,9 @@
       results: [],
       importedResultIds: [],
       runtimeSamples: {},
+      expertChoices: {
+        solidScreeningSkipped: false
+      },
       journal: [{
         ts: new Date().toISOString(),
         type: "system",
@@ -223,6 +226,8 @@
     if (!Array.isArray(state.results)) state.results = [];
     if (!Array.isArray(state.importedResultIds)) state.importedResultIds = [];
     if (!state.runtimeSamples || typeof state.runtimeSamples !== "object") state.runtimeSamples = {};
+    if (!state.expertChoices || typeof state.expertChoices !== "object") state.expertChoices = {};
+    if (typeof state.expertChoices.solidScreeningSkipped !== "boolean") state.expertChoices.solidScreeningSkipped = false;
     if (!Array.isArray(state.journal)) state.journal = [];
     if (!["guided","expert"].includes(state.learningMode)) state.learningMode = "guided";
   }
@@ -233,6 +238,21 @@
 
   function isExpertMode() {
     return learningMode() === "expert";
+  }
+
+  function expertSolidScreeningSkipped() {
+    return !!(state && state.expertChoices && state.expertChoices.solidScreeningSkipped);
+  }
+
+  function latestSolidStructureResult() {
+    const matches = (state && Array.isArray(state.results) ? state.results : []).filter(function (r) {
+      return r.sample_id === "VCOE01_RESIDUE_SOLID" &&
+        r.analysis_type === "STRUCTURE_ELUCIDATION" &&
+        !r.peak_id &&
+        r.status === "completed" &&
+        r.evaluation && r.evaluation.identity_status === "supported";
+    });
+    return matches.length ? matches[matches.length - 1] : null;
   }
 
   function setLearningMode(mode) {
@@ -358,9 +378,19 @@
     };
   }
 
+  function structureElementalSkipped(result) {
+    const m = result && result.measurement || {};
+    return m.formula_source === "not_determined_elemental_analysis_skipped" ||
+      !!(result && result.student_interpretation && result.student_interpretation.elemental_analysis_skipped);
+  }
+
   function structureElementalBadgeHtml(result) {
     const ea = structureElementalEvidence(result);
-    if (!ea) return "";
+    if (!ea) {
+      return structureElementalSkipped(result)
+        ? '<span class="peak-next elemental-evidence skipped">Elementaranalyse bewusst übersprungen · Struktur ohne vorgegebene Summenformel</span>'
+        : "";
+    }
     const relation = ea.empirical && ea.molecular
       ? ea.empirical + (Number.isFinite(ea.factor) ? " · n=" + ea.factor : "") + " → " + ea.molecular
       : (ea.molecular || "Summenformel erschlossen");
@@ -1256,6 +1286,26 @@
       els.actions.appendChild(btn);
     });
 
+    if (isExpertMode() && sample.id === "VCOE01_RESIDUE_SOLID") {
+      const screeningDone = sampleResults.some(function (r) {
+        return r.analysis_type === "ORGANIC_SOLID_SCREENING" && r.status === "completed";
+      });
+      const structureDone = sampleResults.some(function (r) {
+        return r.analysis_type === "STRUCTURE_ELUCIDATION" && !r.peak_id && r.status === "completed";
+      });
+      if (!screeningDone && !structureDone) {
+        const skipBtn = document.createElement("button");
+        skipBtn.type = "button";
+        skipBtn.className = "action-btn expert-skip-btn";
+        skipBtn.textContent = expertSolidScreeningSkipped()
+          ? "Direkt im STRUKTUR-LAB fortsetzen"
+          : "Feststoff-Voranalyse überspringen";
+        skipBtn.title = "Bewusster Expertenpfad: keine klassischen Vorbefunde übernehmen.";
+        skipBtn.addEventListener("click", function () { skipSolidScreeningAndStart(sample); });
+        els.actions.appendChild(skipBtn);
+      }
+    }
+
     if (isExpertMode()) {
       const expertFacts = {
         VCOE01_RAW: "Heterogene Ausgangsprobe.",
@@ -1269,7 +1319,9 @@
         VCOE01_F2: "Destillationsfraktion · Zusammensetzung unbekannt.",
         VCOE01_F3: "Destillationsfraktion · Zusammensetzung unbekannt.",
         VCOE01_RESIDUE: "Nichtflüchtiger Destillationsrückstand.",
-        VCOE01_RESIDUE_SOLID: "Isolierter weißer organischer Feststoff."
+        VCOE01_RESIDUE_SOLID: expertSolidScreeningSkipped()
+          ? "Isolierter weißer organischer Feststoff · klassische Voranalyse bewusst übersprungen."
+          : "Isolierter weißer organischer Feststoff · Voranalyse oder direkter Expertenpfad möglich."
       };
       els.actionHint.textContent = expertFacts[sample.id] || "Wähle einen analytisch begründeten nächsten Schritt.";
     } else if (sample.id === "VCOE01_RAW") {
@@ -1565,6 +1617,22 @@
     window.location.href = target.toString();
   }
 
+  function skipSolidScreeningAndStart(sample) {
+    if (!isExpertMode() || !sample || sample.id !== "VCOE01_RESIDUE_SOLID") return;
+    if (!state.expertChoices || typeof state.expertChoices !== "object") state.expertChoices = {};
+    if (!state.expertChoices.solidScreeningSkipped) {
+      state.expertChoices.solidScreeningSkipped = true;
+      state.journal.push({
+        ts: new Date().toISOString(),
+        type: "system",
+        text: "Expertenentscheidung: Organische Feststoff-Voranalyse bewusst übersprungen; direkte instrumentelle Strukturaufklärung gewählt."
+      });
+      saveState();
+      render();
+    }
+    startSolidStructureLab(sample, null, true);
+  }
+
   function startStructureLab(sample, gcResult, peak) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
@@ -1601,7 +1669,7 @@
           width_min: peak.width_min
         },
         assignment_text: isExpertMode()
-          ? "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Erschließe zunächst aus Molmasse und Elementaranalyse die Summenformel und entwickle anschließend mit MS, IR und ¹H-NMR eine begründete Strukturhypothese."
+          ? "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Nutze die experimentell bestimmte Molmasse und entscheide selbst, ob du die Elementaranalyse zur Summenformelbestimmung heranziehst oder direkt mit MS, IR und ¹H-NMR weiterarbeitest."
           : "Untersuche " + peak.peak_id + " aus dem GC-Lauf dieser Fraktion. Nutze M, MS, IR und ¹H-NMR, formuliere eine begründete Strukturhypothese und ordne anschließend einen Stoffnamen zu."
       },
       returnUrl: returnUrl.toString()
@@ -1662,12 +1730,13 @@
     window.location.href = target.toString();
   }
 
-  function startSolidStructureLab(sample, screeningResult) {
+  function startSolidStructureLab(sample, screeningResult, screeningSkipped) {
     if (!window.AnalytikBridge) {
       alert("Bridge ist nicht geladen.");
       return;
     }
-    if (!screeningResult || !screeningResult.evaluation) {
+    const skipped = !!screeningSkipped || (!screeningResult && expertSolidScreeningSkipped());
+    if ((!screeningResult || !screeningResult.evaluation) && !skipped) {
       alert("Die qualitative Voranalyse fehlt.");
       return;
     }
@@ -1681,16 +1750,19 @@
       sampleId: sample.id,
       caseId: db.case.id,
       analysisType: "STRUCTURE_ELUCIDATION",
-      sourceResultId: screeningResult.result_id,
+      sourceResultId: screeningResult ? screeningResult.result_id : null,
       input: {
         mode: "solid_screening",
         structure_mode: isExpertMode() ? "expert" : "basic",
         target_substance_id: "SALICYLIC_ACID",
         display_label: sample.name_de,
-        prior_findings: screeningResult.evaluation.supported_features || {},
-        assignment_text: isExpertMode()
-          ? "Die klassische Voranalyse liefert allgemeine Strukturmerkmale. Erschließe zunächst aus Molmasse und Elementaranalyse die Summenformel und entwickle danach mit MS, IR und ¹H-NMR eine konkrete Strukturhypothese."
-          : "Die klassische Voranalyse hat bereits allgemeine Strukturmerkmale ergeben. Nutze diese Vorbefunde zusammen mit M, MS, IR und besonders ¹H-NMR, um eine konkrete Strukturhypothese für den unbekannten Feststoff zu entwickeln."
+        screening_skipped: skipped,
+        prior_findings: screeningResult && screeningResult.evaluation ? (screeningResult.evaluation.supported_features || {}) : {},
+        assignment_text: skipped
+          ? "Du hast die klassische Feststoff-Voranalyse bewusst übersprungen. Nutze die experimentell bestimmte Molmasse und entscheide selbst, ob du eine Elementaranalyse hinzuziehst. Entwickle die Struktur anschließend aus MS, IR und ¹H-NMR ohne vorgegebene Vorbefunde."
+          : isExpertMode()
+            ? "Die klassische Voranalyse liefert allgemeine Strukturmerkmale. Nutze die Molmasse und entscheide selbst, ob du zusätzlich eine Elementaranalyse zur Summenformelbestimmung heranziehst; entwickle danach mit MS, IR und ¹H-NMR eine konkrete Strukturhypothese."
+            : "Die klassische Voranalyse hat bereits allgemeine Strukturmerkmale ergeben. Nutze diese Vorbefunde zusammen mit M, MS, IR und besonders ¹H-NMR, um eine konkrete Strukturhypothese für den unbekannten Feststoff zu entwickeln."
       },
       returnUrl: returnUrl.toString()
     });
@@ -2088,8 +2160,9 @@
     }
 
     let organicHtml = "";
-    if (organicSolidResult) {
-      const features = organicSolidResult.evaluation && organicSolidResult.evaluation.supported_features || {};
+    const solidScreeningSkipped = sample.id === "VCOE01_RESIDUE_SOLID" && expertSolidScreeningSkipped() && !organicSolidResult;
+    if (organicSolidResult || solidScreeningSkipped) {
+      const features = organicSolidResult && organicSolidResult.evaluation && organicSolidResult.evaluation.supported_features || {};
       const featureRows = Object.entries(features)
         .filter(function (entry) { return !!entry[1]; })
         .map(function (entry) {
@@ -2097,7 +2170,9 @@
           return '<li><strong>' + escapeHtml(organicFeatureLabel(entry[0])) + '</strong> · ' +
             escapeHtml(organicStrengthLabel(strength)) + '</li>';
         }).join("");
-      const solidStructureResult = structureResultForSourceResult(organicSolidResult.result_id);
+      const solidStructureResult = organicSolidResult
+        ? structureResultForSourceResult(organicSolidResult.result_id)
+        : latestSolidStructureResult();
       const meltingConfirmation = solidStructureResult ? meltingConfirmationForStructureResult(solidStructureResult.result_id) : null;
       const quantResult = meltingConfirmation ? quantResultForConfirmation(meltingConfirmation.result_id) : null;
       const structureStep = quantResult && quantResult.evaluation
@@ -2117,12 +2192,17 @@
               '</span>' + structureElementalBadgeHtml(solidStructureResult) +
               '<button class="solid-melting-btn" type="button" data-structure-result="' + escapeHtml(solidStructureResult.result_id) +
               '">Mit Schmelz- & Mischschmelzpunkt bestätigen</button></div>'
-            : '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
-              '">Im STRUKTUR-LAB untersuchen</button>';
+            : organicSolidResult
+              ? '<button class="solid-structure-btn" type="button" data-screening-result="' + escapeHtml(organicSolidResult.result_id) +
+                '">Im STRUKTUR-LAB untersuchen</button>'
+              : '<button class="solid-direct-structure-btn" type="button">Direkt im STRUKTUR-LAB untersuchen</button>';
 
-      organicHtml = '<div class="guidance-box organic-screening' + (expert ? ' expert-compact' : '') + '"><strong>Voranalyse: allgemeine Strukturmerkmale</strong>' +
+      organicHtml = '<div class="guidance-box organic-screening' + (expert ? ' expert-compact' : '') + '"><strong>' +
+        (organicSolidResult ? 'Voranalyse: allgemeine Strukturmerkmale' : 'Expertenpfad: Feststoff-Voranalyse übersprungen') +
+        '</strong>' +
         (expert ? '' : '<p>Die klassischen Vorproben grenzen die unbekannte Verbindung ein, vergeben aber bewusst noch keinen Stoffnamen.</p>') +
-        (featureRows ? '<ul>' + featureRows + '</ul>' : '<p>Noch keine auswertbaren Strukturmerkmale zurückgegeben.</p>') +
+        (featureRows ? '<ul>' + featureRows + '</ul>' :
+          (solidScreeningSkipped ? '<p>Keine klassischen Vorbefunde übernommen.</p>' : '<p>Noch keine auswertbaren Strukturmerkmale zurückgegeben.</p>')) +
         (expert ? '' : '<p class="screening-next">Die Vorbefunde werden als Startwissen an die instrumentelle Strukturaufklärung übergeben. Der Schmelzpunkt bleibt für eine unabhängige Bestätigung reserviert.</p>') +
         structureStep + '</div>';
     }
@@ -2156,7 +2236,12 @@
     els.resultGuidance.querySelectorAll(".solid-structure-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const screeningResult = state.results.find(function (r) { return r.result_id === btn.dataset.screeningResult; });
-        if (screeningResult) startSolidStructureLab(sample, screeningResult);
+        if (screeningResult) startSolidStructureLab(sample, screeningResult, false);
+      });
+    });
+    els.resultGuidance.querySelectorAll(".solid-direct-structure-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        skipSolidScreeningAndStart(sample);
       });
     });
 
