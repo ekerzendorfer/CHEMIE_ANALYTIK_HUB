@@ -438,3 +438,28 @@ Neu:
 - ORG_FESTSTOFF_LAB erhält `learning_mode` und reduziert im Expert-Modus methodische Beschreibungstexte und Deutung.
 - TITRATIONSTOOL erhält `learning_mode` und reduziert im Expert-Modus die Inline-Rechenhilfen, ohne die fachliche siebenstufige Rechenkette zu verändern.
 - Die aktualisierten Detail-Apps werden mit Build-Parametern gestartet, um veraltete Browser-/Pages-Caches zu vermeiden.
+
+
+## v0.18.0 – optionale Expertenpfade
+
+Der Expertenmodus erlaubt jetzt zwei bewusste Entscheidungen, analytische Vorinformation wegzulassen.
+
+### Feststoff-Voranalyse überspringen
+
+Beim isolierten organischen Feststoff stehen im Expert-Modus zwei Wege offen:
+- klassische Voranalyse im ORG_FESTSTOFF_LAB durchführen
+- **Feststoff-Voranalyse überspringen** und direkt zur instrumentellen Strukturaufklärung wechseln
+
+Der Verzicht wird im Hub-Zustand und im Laborjournal protokolliert. STRUKTUR_LAB erhält in diesem Fall keine klassischen Vorbefunde. Die spätere Schmelz-/Mischschmelzpunkt-Bestätigung und quantitative Titration bleiben unverändert erforderlich.
+
+Der Fallabschluss akzeptiert im Expert-Modus sowohl die durchgeführte Voranalyse als auch den bewusst protokollierten Verzicht. Die Beweiskette kennzeichnet den übersprungenen Schritt ausdrücklich.
+
+### Elementaranalyse optional
+
+STRUKTUR_LAB v0.3.0 erlaubt im Expertenmodus außerdem, die Elementaranalyse vor Beginn bewusst zu überspringen. MS wird dann ohne vorab bekannte Summenformel freigegeben.
+
+Im zurückgegebenen STRUCTURE_ELUCIDATION-RESULT wird unterschieden zwischen:
+- `formula_source: "elemental_analysis_plus_molar_mass"`
+- `formula_source: "structure_hypothesis_without_prior_formula"`
+
+Damit bleibt sichtbar, auf welchem Evidenzweg die Strukturhypothese zustande gekommen ist.
